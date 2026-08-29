@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:khatabook_lite/presentation/screens/customer_detail_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/customer.dart';
@@ -194,7 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
           size: 28,
         ),
         onTap: () {
-          // TODO: Navigate to Customer Detail screen (Feature 3)
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CustomerDetailScreen(customer: customer),
+            ),
+          ).then((_) => _loadData());
         },
       ),
     );
