@@ -3,6 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'core/theme/app_theme.dart';
 import 'data/models/customer_model.dart';
 import 'data/models/transaction_model.dart';
+import 'data/repositories/customer_repository_impl.dart';
+import 'data/repositories/transaction_repository_impl.dart';
 import 'presentation/screens/home_screen.dart';
 
 void main() async {
@@ -16,8 +18,15 @@ void main() async {
   Hive.registerAdapter(TransactionModelAdapter());
 
   // Open Boxes
-  await Hive.openBox<CustomerModel>('customers');
-  await Hive.openBox<TransactionModel>('transactions');
+  final customerBox = await Hive.openBox<CustomerModel>('customers');
+  final transactionBox = await Hive.openBox<TransactionModel>('transactions');
+
+  // Initialize Repositories
+  final customerRepository = CustomerRepositoryImpl(customerBox: customerBox);
+  final transactionRepository = TransactionRepositoryImpl(
+    transactionBox: transactionBox,
+    customerBox: customerBox,
+  );
 
   runApp(const KhataBookLiteApp());
 }
