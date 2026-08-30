@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
-import '../../domain/entities/transaction.dart';
+import 'package:khatabook_lite/core/theme/app_colors.dart';
+import 'package:khatabook_lite/core/theme/app_text_styles.dart';
+import 'package:khatabook_lite/domain/entities/transaction.dart';
 
 class TransactionTile extends StatelessWidget {
   final Transaction transaction;
+  final VoidCallback? onDelete;
 
-  const TransactionTile({super.key, required this.transaction});
+  const TransactionTile({super.key, required this.transaction, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +33,44 @@ class TransactionTile extends StatelessWidget {
           label,
           style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(
-          _formatDate(transaction.timestamp),
-          style: AppTextStyles.caption,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _formatDate(transaction.timestamp),
+              style: AppTextStyles.caption,
+            ),
+            if (transaction.note != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                transaction.note!,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ],
         ),
-        trailing: Text(
-          '$sign Rs. ${transaction.amount.toStringAsFixed(0)}',
-          style: AppTextStyles.heading.copyWith(color: color, fontSize: 16),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$sign Rs. ${transaction.amount.toStringAsFixed(0)}',
+              style: AppTextStyles.heading.copyWith(color: color, fontSize: 16),
+            ),
+            if (onDelete != null) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
+                onPressed: onDelete,
+              ),
+            ],
+          ],
         ),
       ),
     );
