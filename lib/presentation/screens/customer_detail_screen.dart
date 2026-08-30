@@ -31,9 +31,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 
   void _loadTransactions() {
-    context.read<TransactionBloc>().add(
-      LoadTransactions(customerId: widget.customer.id),
-    );
+    context.read<TransactionBloc>().add(LoadTransactions(widget.customer.id));
   }
 
   void _navigateToTransactionEntry(String type) async {
@@ -93,9 +91,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 
   void _deleteCustomer() {
-    context.read<CustomerBloc>().add(
-      DeleteCustomerEvent(customerId: widget.customer.id),
-    );
+    context.read<CustomerBloc>().add(DeleteCustomerEvent(widget.customer.id));
 
     Navigator.pop(context, true);
 
