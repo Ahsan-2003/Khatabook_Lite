@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
+import 'package:khatabook_lite/presentation/bloc/customer/customer_event.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../domain/entities/customer.dart';
 import '../bloc/transaction/transaction_bloc.dart';
 import '../bloc/transaction/transaction_event.dart';
-import '../bloc/transaction/transaction_state.dart';
 import '../screens/customer_detail_screen.dart';
 
 class CustomerCard extends StatelessWidget {
