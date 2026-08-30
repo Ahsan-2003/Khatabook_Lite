@@ -1,322 +1,206 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:khatabook_lite/presentation/screens/transaction_entry_screen.dart';
-import 'package:khatabook_lite/presentation/widgets/transaction_tile.dart';
+import 'package:khatabook_lite/presentation/screens/add_customer_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../domain/entities/customer.dart';
-import '../../domain/entities/transaction.dart';
+import '../bloc/customer/customer_bloc.dart';
+import '../bloc/customer/customer_event.dart';
+import '../bloc/customer/customer_state.dart';
 import '../bloc/transaction/transaction_bloc.dart';
 import '../bloc/transaction/transaction_event.dart';
 import '../bloc/transaction/transaction_state.dart';
+import '../widgets/balance_card.dart';
+import '../widgets/customer_card.dart';
 
-class CustomerDetailScreen extends StatefulWidget {
-  final Customer customer;
-
-  const CustomerDetailScreen({super.key, required this.customer});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<CustomerDetailScreen> createState() => _CustomerDetailScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
+class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
+    _loadData();
   }
 
-  void _loadTransactions() {
-    context.read<TransactionBloc>().add(
-      // LoadTransactions(customerId: widget.customer.id),
-      LoadTransactions(widget.customer.id),
-    );
-  }
-
-  void _navigateToTransactionEntry(String type) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TransactionEntryScreen(
-          customer: widget.customer,
-          transactionType: type,
-        ),
-      ),
-    );
-
-    if (result == true) {
-      _loadTransactions();
-    }
+  void _loadData() {
+    context.read<CustomerBloc>().add(LoadCustomers());
+    context.read<TransactionBloc>().add(LoadDashboardData());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.customer.name)),
-      body: Column(
-        children: [
-          // Customer Info Section
-          _buildCustomerInfo(),
-
-          // Transaction History
-          Expanded(
-            child: BlocBuilder<TransactionBloc, TransactionState>(
+      appBar: AppBar(
+        title: const Text('KhataBook Lite'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _loadData();
+        },
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Dashboard Balances
+            BlocBuilder<TransactionBloc, TransactionState>(
               builder: (context, state) {
-                if (state is TransactionLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                if (state is DashboardDataLoaded) {
+                  return Column(
+                    children: [
+                      BalanceCard(
+                        title: 'Total Owed to Me',
+                        amount: state.totalOwedToVendor,
+                        color: AppColors.payment,
+                        icon: Icons.arrow_downward,
+                      ),
+                      const SizedBox(height: 12),
+                      BalanceCard(
+                        title: 'I Owe Others',
+                        amount: state.totalVendorOwes,
+                        color: AppColors.credit,
+                        icon: Icons.arrow_upward,
+                      ),
+                    ],
+                  );
                 }
+                return Column(
+                  children: [
+                    BalanceCard(
+                      title: 'Total Owed to Me',
+                      amount: 0,
+                      color: AppColors.payment,
+                      icon: Icons.arrow_downward,
+                    ),
+                    const SizedBox(height: 12),
+                    BalanceCard(
+                      title: 'I Owe Others',
+                      amount: 0,
+                      color: AppColors.credit,
+                      icon: Icons.arrow_upward,
+                    ),
+                  ],
+                );
+              },
+            ),
 
-                if (state is TransactionLoaded) {
-                  if (state.transactions.isEmpty) {
-                    return _buildEmptyState();
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: state.transactions.length,
-                    itemBuilder: (context, index) {
-                      return TransactionTile(
-                        transaction: state.transactions[index],
+            const SizedBox(height: 24),
+
+            // Section Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('My Customers', style: AppTextStyles.heading),
+                BlocBuilder<CustomerBloc, CustomerState>(
+                  builder: (context, state) {
+                    if (state is CustomerLoaded) {
+                      return Text(
+                        '${state.customers.length} total',
+                        style: AppTextStyles.caption,
                       );
-                    },
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Customer List
+            BlocBuilder<CustomerBloc, CustomerState>(
+              builder: (context, state) {
+                if (state is CustomerLoading) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: CircularProgressIndicator()),
                   );
                 }
 
-                if (state is TransactionError) {
-                  return Center(child: Text(state.message));
+                if (state is CustomerLoaded) {
+                  if (state.customers.isEmpty) {
+                    return _buildEmptyState();
+                  }
+                  return Column(
+                    children: state.customers
+                        .map((customer) => CustomerCard(customer: customer))
+                        .toList(),
+                  );
+                }
+
+                if (state is CustomerError) {
+                  return _buildErrorState(state.message);
                 }
 
                 return _buildEmptyState();
               },
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: _buildActionButtons(),
-    );
-  }
-
-  // Customer Info Card
-  Widget _buildCustomerInfo() {
-    return Container(
-      width: double.infinity,
-      color: AppColors.surface,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Avatar
-          _buildAvatar(),
-          const SizedBox(height: 12),
-          Text(widget.customer.name, style: AppTextStyles.heading),
-          if (widget.customer.phoneNumber != null) ...[
-            const SizedBox(height: 4),
-            Text(widget.customer.phoneNumber!, style: AppTextStyles.caption),
           ],
-          const SizedBox(height: 16),
-          // Balance Display
-          BlocBuilder<TransactionBloc, TransactionState>(
-            builder: (context, state) {
-              double balance = 0;
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
+          );
 
-              if (state is TransactionLoaded) {
-                balance = _calculateBalance(state.transactions);
-              }
-
-              final balanceColor = balance > 0
-                  ? AppColors.credit
-                  : balance < 0
-                  ? AppColors.payment
-                  : AppColors.textSecondary;
-
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: balanceColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Text('Current Balance', style: AppTextStyles.caption),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Rs. ${balance.abs().toStringAsFixed(0)}',
-                      style: AppTextStyles.displayLarge.copyWith(
-                        fontSize: 36,
-                        color: balanceColor,
-                      ),
-                    ),
-                    Text(
-                      balance > 0
-                          ? 'Customer Owes You'
-                          : balance < 0
-                          ? 'You Owe Customer'
-                          : 'Settled',
-                      style: AppTextStyles.caption.copyWith(
-                        color: balanceColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+          if (result == true) {
+            // Customer was added, reload data
+            _loadData();
+          }
+        },
+        child: const Icon(Icons.add, size: 32),
       ),
     );
   }
 
-  // Calculate balance from transactions
-  double _calculateBalance(List<Transaction> transactions) {
-    double balance = 0;
-    for (final transaction in transactions) {
-      if (transaction.type == TransactionType.credit) {
-        balance += transaction.amount;
-      } else {
-        balance -= transaction.amount;
-      }
-    }
-    return balance;
-  }
-
-  // Avatar Widget
-  Widget _buildAvatar() {
-    if (widget.customer.photoPath != null &&
-        File(widget.customer.photoPath!).existsSync()) {
-      return Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          image: DecorationImage(
-            image: FileImage(File(widget.customer.photoPath!)),
-            fit: BoxFit.cover,
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primary.withOpacity(0.2),
-      ),
-      child: Center(
-        child: Text(
-          widget.customer.name.isNotEmpty
-              ? widget.customer.name[0].toUpperCase()
-              : '?',
-          style: const TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Empty State
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 64,
-            color: AppColors.textSecondary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 12),
-          Text('No transactions yet', style: AppTextStyles.body),
-          const SizedBox(height: 4),
-          Text('Use buttons below to add', style: AppTextStyles.caption),
-        ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.people_outline,
+              size: 64,
+              color: AppColors.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(height: 12),
+            Text('No customers yet', style: AppTextStyles.body),
+            const SizedBox(height: 4),
+            Text(
+              'Tap + to add your first customer',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // Bottom Action Buttons
-  Widget _buildActionButtons() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Gave (Credit) Button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _navigateToTransactionEntry('credit'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.credit,
-                minimumSize: const Size(double.infinity, 70),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.arrow_upward, size: 28),
-                  const SizedBox(height: 4),
-                  Text(
-                    'GAVE',
-                    style: AppTextStyles.button.copyWith(fontSize: 16),
-                  ),
-                  Text(
-                    '(Credit)',
-                    style: AppTextStyles.caption.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
+  Widget _buildErrorState(String message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: AppColors.credit),
+            const SizedBox(height: 12),
+            Text('Something went wrong', style: AppTextStyles.body),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              style: AppTextStyles.caption,
+              textAlign: TextAlign.center,
             ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Got (Payment) Button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _navigateToTransactionEntry('payment'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.payment,
-                minimumSize: const Size(double.infinity, 70),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.arrow_downward, size: 28),
-                  const SizedBox(height: 4),
-                  Text(
-                    'GOT',
-                    style: AppTextStyles.button.copyWith(fontSize: 16),
-                  ),
-                  Text(
-                    '(Payment)',
-                    style: AppTextStyles.caption.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
