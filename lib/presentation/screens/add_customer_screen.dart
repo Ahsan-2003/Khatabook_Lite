@@ -55,6 +55,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   // Submit form
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isSubmitting = true;
+      });
+
       context.read<CustomerBloc>().add(
         AddCustomerEvent(
           name: _nameController.text.trim(),
@@ -82,137 +86,156 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Add Customer')),
-      body: BlocListener<CustomerBloc, CustomerState>(
+      body: BlocConsumer<CustomerBloc, CustomerState>(
         listener: (context, state) {
-          if (state is CustomerLoaded) {
+          if (state is CustomerLoaded && _isSubmitting) {
             // Customer added successfully
+            _isSubmitting = false;
             Navigator.pop(context, true);
             _showSnackBar('Customer added successfully');
           } else if (state is CustomerError) {
+            _isSubmitting = false;
             _showSnackBar(state.message, isError: true);
           }
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Photo Picker
-                Center(
-                  child: GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.surface,
-                        border: Border.all(color: AppColors.divider, width: 2),
-                      ),
-                      child: _selectedImage != null
-                          ? ClipOval(
-                              child: Image.file(
-                                _selectedImage!,
-                                width: 120,
-                                height: 120,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.camera_alt,
-                                  size: 40,
-                                  color: AppColors.textSecondary,
+        builder: (context, state) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Photo Picker
+                  Center(
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.surface,
+                          border: Border.all(
+                            color: AppColors.divider,
+                            width: 2,
+                          ),
+                        ),
+                        child: _selectedImage != null
+                            ? ClipOval(
+                                child: Image.file(
+                                  _selectedImage!,
+                                  width: 120,
+                                  height: 120,
+                                  fit: BoxFit.cover,
                                 ),
-                                const SizedBox(height: 4),
-                                Text('Add Photo', style: AppTextStyles.caption),
-                              ],
-                            ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.camera_alt,
+                                    size: 40,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Add Photo',
+                                    style: AppTextStyles.caption,
+                                  ),
+                                ],
+                              ),
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-                // Customer Name Field
-                Text(
-                  'Customer Name *',
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w600,
+                  // Customer Name Field
+                  Text(
+                    'Customer Name *',
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameController,
-                  style: AppTextStyles.body.copyWith(fontSize: 18),
-                  decoration: const InputDecoration(
-                    hintText: 'Enter customer name',
-                    prefixIcon: Icon(Icons.person, size: 28),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a name';
-                    }
-                    if (value.trim().length < 2) {
-                      return 'Name is too short';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 20),
-
-                // Phone Number Field
-                Text(
-                  'Phone Number (Optional)',
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _phoneController,
-                  style: AppTextStyles.body.copyWith(fontSize: 18),
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    hintText: '03XX-XXXXXXX',
-                    prefixIcon: Icon(Icons.phone, size: 28),
-                  ),
-                  validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      if (value.length < 10) {
-                        return 'Enter a valid phone number';
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _nameController,
+                    style: AppTextStyles.body.copyWith(fontSize: 18),
+                    decoration: const InputDecoration(
+                      hintText: 'Enter customer name',
+                      prefixIcon: Icon(Icons.person, size: 28),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a name';
                       }
-                    }
-                    return null;
-                  },
-                ),
+                      if (value.trim().length < 2) {
+                        return 'Name is too short';
+                      }
+                      return null;
+                    },
+                  ),
 
-                const SizedBox(height: 40),
+                  const SizedBox(height: 20),
 
-                // Submit Button
-                ElevatedButton(
-                  onPressed: _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    minimumSize: const Size(double.infinity, 60),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                  // Phone Number Field
+                  Text(
+                    'Phone Number (Optional)',
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: const Text(
-                    'Save Customer',
-                    style: AppTextStyles.button,
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _phoneController,
+                    style: AppTextStyles.body.copyWith(fontSize: 18),
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      hintText: '03XX-XXXXXXX',
+                      prefixIcon: Icon(Icons.phone, size: 28),
+                    ),
+                    validator: (value) {
+                      if (value != null && value.isNotEmpty) {
+                        if (value.length < 10) {
+                          return 'Enter a valid phone number';
+                        }
+                      }
+                      return null;
+                    },
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 40),
+
+                  // Submit Button
+                  ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      minimumSize: const Size(double.infinity, 60),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Save Customer',
+                            style: AppTextStyles.button,
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
