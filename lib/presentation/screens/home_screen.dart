@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:khatabook_lite/presentation/screens/transaction_entry_screen.dart';
+import 'package:khatabook_lite/presentation/widgets/transaction_tile.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../domain/entities/customer.dart';
@@ -8,8 +10,6 @@ import '../../domain/entities/transaction.dart';
 import '../bloc/transaction/transaction_bloc.dart';
 import '../bloc/transaction/transaction_event.dart';
 import '../bloc/transaction/transaction_state.dart';
-import '../widgets/transaction_tile.dart';
-import 'transaction_entry_screen.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
@@ -29,7 +29,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
   void _loadTransactions() {
     context.read<TransactionBloc>().add(
-      LoadTransactions(customerId: widget.customer.id),
+      // LoadTransactions(customerId: widget.customer.id),
+      LoadTransactions(widget.customer.id),
     );
   }
 
