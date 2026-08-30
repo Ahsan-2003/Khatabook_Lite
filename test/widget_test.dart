@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:khatabook_lite/app.dart';
 import 'package:khatabook_lite/data/models/customer_model.dart';
 import 'package:khatabook_lite/data/models/transaction_model.dart';
 import 'package:khatabook_lite/data/repositories/customer_repository_impl.dart';
@@ -12,7 +13,6 @@ import 'package:khatabook_lite/domain/usecases/get_customer_balance.dart';
 import 'package:khatabook_lite/domain/usecases/get_customers.dart';
 import 'package:khatabook_lite/domain/usecases/get_dashboard_data.dart';
 import 'package:khatabook_lite/domain/usecases/get_transactions.dart';
-import 'package:khatabook_lite/main.dart';
 
 void main() {
   testWidgets('KhataBook Lite app loads successfully', (
