@@ -1,30 +1,85 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:khatabook_lite/data/models/customer_model.dart';
+import 'package:khatabook_lite/data/models/transaction_model.dart';
+import 'package:khatabook_lite/data/repositories/customer_repository_impl.dart';
+import 'package:khatabook_lite/data/repositories/transaction_repository_impl.dart';
+import 'package:khatabook_lite/domain/usecases/add_customer.dart';
+import 'package:khatabook_lite/domain/usecases/add_transaction.dart';
+import 'package:khatabook_lite/domain/usecases/delete_customer.dart';
+import 'package:khatabook_lite/domain/usecases/get_customer_balance.dart';
+import 'package:khatabook_lite/domain/usecases/get_customers.dart';
+import 'package:khatabook_lite/domain/usecases/get_dashboard_data.dart';
+import 'package:khatabook_lite/domain/usecases/get_transactions.dart';
 import 'package:khatabook_lite/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const KhataBookLiteApp());
+  testWidgets('KhataBook Lite app loads successfully', (
+    WidgetTester tester,
+  ) async {
+    // Initialize Hive for testing
+    await Hive.initFlutter();
+    Hive.registerAdapter(CustomerModelAdapter());
+    Hive.registerAdapter(TransactionModelAdapter());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final customerBox = await Hive.openBox<CustomerModel>('test_customers');
+    final transactionBox = await Hive.openBox<TransactionModel>(
+      'test_transactions',
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Create repositories
+    final customerRepository = CustomerRepositoryImpl(customerBox: customerBox);
+    final transactionRepository = TransactionRepositoryImpl(
+      transactionBox: transactionBox,
+      customerBox: customerBox,
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Create use cases
+    final getCustomers = GetCustomers(customerRepository);
+    final addCustomer = AddCustomer(customerRepository);
+    final deleteCustomer = DeleteCustomer(customerRepository);
+    final getTransactions = GetTransactions(transactionRepository);
+    final addTransaction = AddTransaction(transactionRepository);
+    final getDashboardData = GetDashboardData(transactionRepository);
+    final getCustomerBalance = GetCustomerBalance(transactionRepository);
+
+    // Build our app
+    await tester.pumpWidget(
+      KhataBookLiteApp(
+        customerRepository: customerRepository,
+        transactionRepository: transactionRepository,
+        getCustomers: getCustomers,
+        addCustomer: addCustomer,
+        deleteCustomer: deleteCustomer,
+        getTransactions: getTransactions,
+        addTransaction: addTransaction,
+        getDashboardData: getDashboardData,
+        getCustomerBalance: getCustomerBalance,
+      ),
+    );
+
+    // Wait for initial load
+    await tester.pumpAndSettle();
+
+    // Verify app bar title
+    expect(find.text('KhataBook Lite'), findsOneWidget);
+
+    // Verify balance cards
+    expect(find.text('Total Owed to Me'), findsOneWidget);
+    expect(find.text('I Owe Others'), findsOneWidget);
+
+    // Verify customers section
+    expect(find.text('My Customers'), findsOneWidget);
+
+    // Verify empty state
+    expect(find.text('No customers yet'), findsOneWidget);
+
+    // Verify FAB exists
+    expect(find.byIcon(Icons.add), findsOneWidget);
+
+    // Clean up
+    await customerBox.close();
+    await transactionBox.close();
   });
 }
