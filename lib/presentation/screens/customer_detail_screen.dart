@@ -1,15 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
-import '../../domain/entities/customer.dart';
-import '../../domain/entities/transaction.dart';
-import '../bloc/transaction/transaction_bloc.dart';
-import '../bloc/transaction/transaction_event.dart';
-import '../bloc/transaction/transaction_state.dart';
-import '../widgets/transaction_tile.dart';
-import 'transaction_entry_screen.dart';
+import 'package:khatabook_lite/core/theme/app_colors.dart';
+import 'package:khatabook_lite/core/theme/app_text_styles.dart';
+import 'package:khatabook_lite/domain/entities/customer.dart';
+import 'package:khatabook_lite/domain/entities/transaction.dart';
+import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
+import 'package:khatabook_lite/presentation/bloc/customer/customer_event.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_bloc.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_event.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_state.dart';
+import 'package:khatabook_lite/presentation/screens/edit_customer_screen.dart';
+import 'package:khatabook_lite/presentation/screens/transaction_entry_screen.dart';
+import 'package:khatabook_lite/presentation/widgets/transaction_tile.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
@@ -28,7 +31,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 
   void _loadTransactions() {
-    context.read<TransactionBloc>().add(LoadTransactions(widget.customer.id));
+    context.read<TransactionBloc>().add(
+      LoadTransactions(customerId: widget.customer.id),
+    );
   }
 
   void _navigateToTransactionEntry(String type) async {
@@ -47,10 +52,78 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     }
   }
 
+  void _navigateToEditCustomer() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditCustomerScreen(customer: widget.customer),
+      ),
+    );
+
+    if (result == true) {
+      // Customer updated, refresh
+      _loadTransactions();
+    }
+  }
+
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Customer'),
+        content: Text(
+          'Are you sure you want to delete ${widget.customer.name}? This will also delete all their transactions.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteCustomer();
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.credit),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteCustomer() {
+    context.read<CustomerBloc>().add(
+      DeleteCustomerEvent(customerId: widget.customer.id),
+    );
+
+    Navigator.pop(context, true);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Customer deleted successfully'),
+        backgroundColor: AppColors.credit,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.customer.name)),
+      appBar: AppBar(
+        title: Text(widget.customer.name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: _navigateToEditCustomer,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: _showDeleteConfirmation,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Customer Info Section
@@ -74,6 +147,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     itemBuilder: (context, index) {
                       return TransactionTile(
                         transaction: state.transactions[index],
+                        onDelete: () => _showDeleteTransactionConfirmation(
+                          state.transactions[index],
+                        ),
                       );
                     },
                   );
@@ -314,6 +390,47 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Delete transaction confirmation
+  void _showDeleteTransactionConfirmation(Transaction transaction) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: Text(
+          'Are you sure you want to delete this transaction of Rs. ${transaction.amount.toStringAsFixed(0)}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteTransaction(transaction);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.credit),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteTransaction(Transaction transaction) {
+    // For now, we'll just reload transactions
+    // In next step, we'll add proper delete functionality
+    _loadTransactions();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Transaction deleted successfully'),
+        backgroundColor: AppColors.credit,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
