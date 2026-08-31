@@ -42,6 +42,8 @@ dependencies:
   path_provider: ^2.1.6
   intl: ^0.20.3
   image_picker: ^1.1.2
+  # URL Launcher (for WhatsApp/SMS)
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
