@@ -35,3 +35,16 @@ class AddTransactionEvent extends TransactionEvent {
 }
 
 class LoadDashboardData extends TransactionEvent {}
+
+class DeleteTransactionEvent extends TransactionEvent {
+  final String transactionId;
+  final String customerId;
+
+  const DeleteTransactionEvent({
+    required this.transactionId,
+    required this.customerId,
+  });
+
+  @override
+  List<Object?> get props => [transactionId, customerId];
+}

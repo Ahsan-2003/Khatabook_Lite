@@ -13,6 +13,7 @@ import 'package:khatabook_lite/domain/usecases/get_customer_balance.dart';
 import 'package:khatabook_lite/domain/usecases/get_customers.dart';
 import 'package:khatabook_lite/domain/usecases/get_dashboard_data.dart';
 import 'package:khatabook_lite/domain/usecases/get_transactions.dart';
+import 'package:khatabook_lite/domain/usecases/delete_transaction.dart';
 
 void main() {
   testWidgets('KhataBook Lite app loads successfully', (
@@ -43,6 +44,7 @@ void main() {
     final addTransaction = AddTransaction(transactionRepository);
     final getDashboardData = GetDashboardData(transactionRepository);
     final getCustomerBalance = GetCustomerBalance(transactionRepository);
+    final deleteTransaction = DeleteTransaction(transactionRepository);
 
     // Build our app
     await tester.pumpWidget(
@@ -56,6 +58,7 @@ void main() {
         addTransaction: addTransaction,
         getDashboardData: getDashboardData,
         getCustomerBalance: getCustomerBalance,
+        deleteTransaction: deleteTransaction,
       ),
     );
 

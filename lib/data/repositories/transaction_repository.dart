@@ -1,4 +1,5 @@
-import 'package:khatabook_lite/domain/entities/transaction.dart';
+import 'package:khatabook_lite/domain/entities/transaction.dart'
+    show Transaction, TransactionType;
 
 abstract class TransactionRepository {
   Future<List<Transaction>> getTransactionsByCustomer(String customerId);

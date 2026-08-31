@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:khatabook_lite/domain/usecases/delete_transaction.dart';
 import 'app.dart';
 import 'data/models/customer_model.dart';
 import 'data/models/transaction_model.dart';
@@ -42,6 +43,8 @@ void main() async {
   final addTransaction = AddTransaction(transactionRepository);
   final getDashboardData = GetDashboardData(transactionRepository);
   final getCustomerBalance = GetCustomerBalance(transactionRepository);
+  // Inside main() after other use cases:
+  final deleteTransaction = DeleteTransaction(transactionRepository);
 
   runApp(
     KhataBookLiteApp(
@@ -54,6 +57,7 @@ void main() async {
       addTransaction: addTransaction,
       getDashboardData: getDashboardData,
       getCustomerBalance: getCustomerBalance,
+      deleteTransaction: deleteTransaction,
     ),
   );
 }

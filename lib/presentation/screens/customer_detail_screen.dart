@@ -244,6 +244,50 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
+  void _showDeleteTransactionConfirmation(Transaction transaction) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: Text(
+          'Are you sure you want to delete this transaction of Rs. ${transaction.amount.toStringAsFixed(0)}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _deleteTransaction(transaction);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.credit),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteTransaction(Transaction transaction) {
+    context.read<TransactionBloc>().add(
+      DeleteTransactionEvent(
+        transactionId: transaction.id,
+        customerId: widget.customer.id,
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Transaction deleted successfully'),
+        backgroundColor: AppColors.credit,
+        behavior: SnackBarBehavior.fixed,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -310,6 +354,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     itemBuilder: (context, index) {
                       return TransactionTile(
                         transaction: state.transactions[index],
+                        onDelete: () => _showDeleteTransactionConfirmation(
+                          state.transactions[index],
+                        ),
                       );
                     },
                   );

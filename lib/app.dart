@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:khatabook_lite/domain/usecases/delete_transaction.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/customer_repository_impl.dart';
 import 'data/repositories/transaction_repository_impl.dart';
@@ -12,7 +13,7 @@ import 'domain/usecases/get_dashboard_data.dart';
 import 'domain/usecases/get_transactions.dart';
 import 'presentation/bloc/customer/customer_bloc.dart';
 import 'presentation/bloc/transaction/transaction_bloc.dart';
-import 'presentation/screens/home_screen.dart';
+import 'package:khatabook_lite/presentation/screens/home_screen.dart';
 
 class KhataBookLiteApp extends StatelessWidget {
   final CustomerRepositoryImpl customerRepository;
@@ -24,6 +25,8 @@ class KhataBookLiteApp extends StatelessWidget {
   final AddTransaction addTransaction;
   final GetDashboardData getDashboardData;
   final GetCustomerBalance getCustomerBalance;
+  // Add to class properties:
+  final DeleteTransaction deleteTransaction;
 
   const KhataBookLiteApp({
     super.key,
@@ -36,6 +39,7 @@ class KhataBookLiteApp extends StatelessWidget {
     required this.addTransaction,
     required this.getDashboardData,
     required this.getCustomerBalance,
+    required this.deleteTransaction,
   });
 
   @override
@@ -53,6 +57,7 @@ class KhataBookLiteApp extends StatelessWidget {
           create: (context) => TransactionBloc(
             getTransactions: getTransactions,
             addTransaction: addTransaction,
+            deleteTransaction: deleteTransaction,
             getDashboardData: getDashboardData,
             getCustomerBalance: getCustomerBalance,
           ),
