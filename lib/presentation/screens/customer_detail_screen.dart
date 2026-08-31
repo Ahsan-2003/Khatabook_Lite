@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/domain/entities/customer.dart';
@@ -95,12 +96,141 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     Navigator.pop(context, true);
   }
 
+  // Show reminder options
+  void _showReminderOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.chat, color: Color(0xFF25D366)),
+                title: const Text('Send via WhatsApp'),
+                subtitle: const Text('Requires WhatsApp installed'),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _sendWhatsAppReminder();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.sms, color: AppColors.primary),
+                title: const Text('Send via SMS'),
+                subtitle: const Text('Uses default SMS app'),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _sendSmsReminder();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Send WhatsApp reminder
+  Future<void> _sendWhatsAppReminder() async {
+    final phoneNumber = widget.customer.phoneNumber;
+
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      _showSnackBar('Customer has no phone number', isError: true);
+      return;
+    }
+
+    final message = _buildReminderMessage();
+    final formattedNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+
+    final url =
+        'https://wa.me/$formattedNumber?text=${Uri.encodeComponent(message)}';
+
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
+      } else {
+        _showSnackBar('WhatsApp is not installed', isError: true);
+      }
+    } catch (e) {
+      _showSnackBar('Failed to send WhatsApp message', isError: true);
+    }
+  }
+
+  // Send SMS reminder
+  Future<void> _sendSmsReminder() async {
+    final phoneNumber = widget.customer.phoneNumber;
+
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      _showSnackBar('Customer has no phone number', isError: true);
+      return;
+    }
+
+    final message = _buildReminderMessage();
+
+    final url = 'sms:$phoneNumber?body=${Uri.encodeComponent(message)}';
+
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
+      } else {
+        _showSnackBar('SMS app not available', isError: true);
+      }
+    } catch (e) {
+      _showSnackBar('Failed to send SMS', isError: true);
+    }
+  }
+
+  // Build reminder message
+  String _buildReminderMessage() {
+    // Get current balance
+    double balance = 0;
+    final state = context.read<TransactionBloc>().state;
+    if (state is TransactionLoaded) {
+      balance = _calculateBalance(state.transactions);
+    }
+
+    if (balance > 0) {
+      return 'Salam ${widget.customer.name},\n\n'
+          'This is a reminder from my shop. Your current balance is Rs. ${balance.toStringAsFixed(0)}.\n\n'
+          'Please clear your balance at your earliest convenience.\n\n'
+          'Shukriya!';
+    } else if (balance < 0) {
+      return 'Salam ${widget.customer.name},\n\n'
+          'This is to inform you that I owe you Rs. ${balance.abs().toStringAsFixed(0)}.\n\n'
+          'Shukriya!';
+    } else {
+      return 'Salam ${widget.customer.name},\n\n'
+          'Your account is settled. Thank you for your business!\n\n'
+          'Shukriya!';
+    }
+  }
+
+  // Show snackbar
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.credit : AppColors.payment,
+        behavior: SnackBarBehavior.fixed,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.customer.name),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: _showReminderOptions,
+            tooltip: 'Send Reminder',
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: _navigateToEditCustomer,
