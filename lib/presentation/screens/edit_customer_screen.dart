@@ -81,7 +81,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? AppColors.credit : AppColors.payment,
-        behavior: SnackBarBehavior.floating,
+        behavior: SnackBarBehavior.fixed,
+        duration: const Duration(seconds: 2),
       ),
     );
   }

@@ -95,13 +95,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
     Navigator.pop(context, true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Customer deleted successfully'),
-        backgroundColor: AppColors.credit,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    // Show SnackBar after navigation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Customer deleted successfully'),
+          backgroundColor: AppColors.credit,
+          behavior: SnackBarBehavior.fixed,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    });
   }
 
   @override
@@ -423,10 +427,11 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     _loadTransactions();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      const SnackBar(
         content: Text('Transaction deleted successfully'),
         backgroundColor: AppColors.credit,
-        behavior: SnackBarBehavior.floating,
+        behavior: SnackBarBehavior.fixed,
+        duration: Duration(seconds: 2),
       ),
     );
   }
