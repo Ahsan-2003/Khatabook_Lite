@@ -24,6 +24,23 @@ class AddCustomerEvent extends CustomerEvent {
   List<Object?> get props => [name, phoneNumber, photoPath];
 }
 
+class UpdateCustomerEvent extends CustomerEvent {
+  final String customerId;
+  final String name;
+  final String? phoneNumber;
+  final String? photoPath;
+
+  const UpdateCustomerEvent({
+    required this.customerId,
+    required this.name,
+    this.phoneNumber,
+    this.photoPath,
+  });
+
+  @override
+  List<Object?> get props => [customerId, name, phoneNumber, photoPath];
+}
+
 class DeleteCustomerEvent extends CustomerEvent {
   final String customerId;
 

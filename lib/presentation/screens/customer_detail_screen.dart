@@ -61,6 +61,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
     if (result == true) {
       setState(() {});
+      // Also reload transactions
+      _loadTransactions();
     }
   }
 
