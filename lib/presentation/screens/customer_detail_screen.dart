@@ -145,19 +145,37 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     }
 
     final message = _buildReminderMessage();
-    final formattedNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+
+    // Clean phone number - remove all non-digits
+    final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+
+    // Format for Pakistan numbers
+    String formattedNumber = cleanedNumber;
+
+    // If starts with 0, replace with 92 (Pakistan country code)
+    if (formattedNumber.startsWith('0')) {
+      formattedNumber = '92${formattedNumber.substring(1)}';
+    }
+    // If starts with 3, add 92
+    else if (formattedNumber.startsWith('3')) {
+      formattedNumber = '92$formattedNumber';
+    }
 
     final url =
         'https://wa.me/$formattedNumber?text=${Uri.encodeComponent(message)}';
 
     try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url));
+      final uri = Uri.parse(url);
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        // Success - WhatsApp opened
       } else {
-        _showSnackBar('WhatsApp is not installed', isError: true);
+        _showSnackBar(
+          'Could not open WhatsApp. Please check if it is installed.',
+          isError: true,
+        );
       }
     } catch (e) {
-      _showSnackBar('Failed to send WhatsApp message', isError: true);
+      _showSnackBar('Failed to open WhatsApp: $e', isError: true);
     }
   }
 
@@ -172,16 +190,20 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
     final message = _buildReminderMessage();
 
-    final url = 'sms:$phoneNumber?body=${Uri.encodeComponent(message)}';
+    // Clean phone number - remove all non-digits
+    final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+
+    final url = 'sms:$cleanedNumber?body=${Uri.encodeComponent(message)}';
 
     try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url));
+      final uri = Uri.parse(url);
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        // Success - SMS app opened
       } else {
-        _showSnackBar('SMS app not available', isError: true);
+        _showSnackBar('Could not open SMS app', isError: true);
       }
     } catch (e) {
-      _showSnackBar('Failed to send SMS', isError: true);
+      _showSnackBar('Failed to open SMS app: $e', isError: true);
     }
   }
 
