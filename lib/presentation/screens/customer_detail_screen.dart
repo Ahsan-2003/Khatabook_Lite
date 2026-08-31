@@ -59,27 +59,26 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
 
     if (result == true) {
-      // Customer updated, refresh
-      _loadTransactions();
+      setState(() {});
     }
   }
 
   void _showDeleteConfirmation() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Customer'),
         content: Text(
           'Are you sure you want to delete ${widget.customer.name}? This will also delete all their transactions.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _deleteCustomer();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.credit),
@@ -94,18 +93,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     context.read<CustomerBloc>().add(DeleteCustomerEvent(widget.customer.id));
 
     Navigator.pop(context, true);
-
-    // Show SnackBar after navigation
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Customer deleted successfully'),
-          backgroundColor: AppColors.credit,
-          behavior: SnackBarBehavior.fixed,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    });
   }
 
   @override
@@ -126,8 +113,30 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       ),
       body: Column(
         children: [
-          // Customer Info Section
+          // Customer Info Section (Compact)
           _buildCustomerInfo(),
+
+          // Transaction History Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Transaction History', style: AppTextStyles.heading),
+                BlocBuilder<TransactionBloc, TransactionState>(
+                  builder: (context, state) {
+                    if (state is TransactionLoaded) {
+                      return Text(
+                        '${state.transactions.length} entries',
+                        style: AppTextStyles.caption,
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
+            ),
+          ),
 
           // Transaction History
           Expanded(
@@ -147,9 +156,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     itemBuilder: (context, index) {
                       return TransactionTile(
                         transaction: state.transactions[index],
-                        onDelete: () => _showDeleteTransactionConfirmation(
-                          state.transactions[index],
-                        ),
                       );
                     },
                   );
@@ -165,28 +171,109 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildActionButtons(),
+
+      // Bottom Action Buttons (Smaller)
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Gave (Credit) Button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _navigateToTransactionEntry('credit'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.credit,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.arrow_upward, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'GAVE',
+                        style: AppTextStyles.button.copyWith(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Got (Payment) Button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _navigateToTransactionEntry('payment'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.payment,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.arrow_downward, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'GOT',
+                        style: AppTextStyles.button.copyWith(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  // Customer Info Card
+  // Customer Info Card (Compact)
   Widget _buildCustomerInfo() {
     return Container(
       width: double.infinity,
       color: AppColors.surface,
-      padding: const EdgeInsets.all(20),
-      child: Column(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
           // Avatar
           _buildAvatar(),
-          const SizedBox(height: 12),
-          Text(widget.customer.name, style: AppTextStyles.heading),
-          if (widget.customer.phoneNumber != null) ...[
-            const SizedBox(height: 4),
-            Text(widget.customer.phoneNumber!, style: AppTextStyles.caption),
-          ],
-          const SizedBox(height: 16),
-          // Balance Display
+          const SizedBox(width: 16),
+          // Customer Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.customer.name, style: AppTextStyles.heading),
+                if (widget.customer.phoneNumber != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.customer.phoneNumber!,
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Balance
           BlocBuilder<TransactionBloc, TransactionState>(
             builder: (context, state) {
               double balance = 0;
@@ -203,33 +290,35 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
               return Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
                   color: balanceColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('Current Balance', style: AppTextStyles.caption),
+                    Text('Balance', style: AppTextStyles.caption),
                     const SizedBox(height: 4),
                     Text(
                       'Rs. ${balance.abs().toStringAsFixed(0)}',
-                      style: AppTextStyles.displayLarge.copyWith(
-                        fontSize: 36,
+                      style: AppTextStyles.heading.copyWith(
                         color: balanceColor,
+                        fontSize: 18,
                       ),
                     ),
                     Text(
                       balance > 0
-                          ? 'Customer Owes You'
+                          ? 'Owes You'
                           : balance < 0
-                          ? 'You Owe Customer'
+                          ? 'You Owe'
                           : 'Settled',
                       style: AppTextStyles.caption.copyWith(
                         color: balanceColor,
                         fontWeight: FontWeight.w600,
+                        fontSize: 10,
                       ),
                     ),
                   ],
@@ -242,7 +331,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // Calculate balance from transactions
   double _calculateBalance(List<Transaction> transactions) {
     double balance = 0;
     for (final transaction in transactions) {
@@ -255,13 +343,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     return balance;
   }
 
-  // Avatar Widget
   Widget _buildAvatar() {
     if (widget.customer.photoPath != null &&
         File(widget.customer.photoPath!).existsSync()) {
       return Container(
-        width: 80,
-        height: 80,
+        width: 60,
+        height: 60,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           image: DecorationImage(
@@ -273,8 +360,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     }
 
     return Container(
-      width: 80,
-      height: 80,
+      width: 60,
+      height: 60,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.primary.withOpacity(0.2),
@@ -285,7 +372,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ? widget.customer.name[0].toUpperCase()
               : '?',
           style: const TextStyle(
-            fontSize: 36,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
             color: AppColors.primary,
           ),
@@ -294,7 +381,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // Empty State
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -302,136 +388,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         children: [
           Icon(
             Icons.receipt_long_outlined,
-            size: 64,
+            size: 48,
             color: AppColors.textSecondary.withOpacity(0.5),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text('No transactions yet', style: AppTextStyles.body),
           const SizedBox(height: 4),
           Text('Use buttons below to add', style: AppTextStyles.caption),
         ],
-      ),
-    );
-  }
-
-  // Bottom Action Buttons
-  Widget _buildActionButtons() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Gave (Credit) Button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _navigateToTransactionEntry('credit'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.credit,
-                minimumSize: const Size(double.infinity, 70),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.arrow_upward, size: 28),
-                  const SizedBox(height: 4),
-                  Text(
-                    'GAVE',
-                    style: AppTextStyles.button.copyWith(fontSize: 16),
-                  ),
-                  Text(
-                    '(Credit)',
-                    style: AppTextStyles.caption.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Got (Payment) Button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _navigateToTransactionEntry('payment'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.payment,
-                minimumSize: const Size(double.infinity, 70),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.arrow_downward, size: 28),
-                  const SizedBox(height: 4),
-                  Text(
-                    'GOT',
-                    style: AppTextStyles.button.copyWith(fontSize: 16),
-                  ),
-                  Text(
-                    '(Payment)',
-                    style: AppTextStyles.caption.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Delete transaction confirmation
-  void _showDeleteTransactionConfirmation(Transaction transaction) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Transaction'),
-        content: Text(
-          'Are you sure you want to delete this transaction of Rs. ${transaction.amount.toStringAsFixed(0)}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteTransaction(transaction);
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.credit),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _deleteTransaction(Transaction transaction) {
-    // For now, we'll just reload transactions
-    // In next step, we'll add proper delete functionality
-    _loadTransactions();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Transaction deleted successfully'),
-        backgroundColor: AppColors.credit,
-        behavior: SnackBarBehavior.fixed,
-        duration: Duration(seconds: 2),
       ),
     );
   }
