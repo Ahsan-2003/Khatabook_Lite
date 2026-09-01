@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:khatabook_lite/domain/entities/customer.dart';
 import 'package:khatabook_lite/presentation/screens/add_customer_screen.dart';
+import 'package:khatabook_lite/presentation/widgets/overdue_filter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../bloc/customer/customer_bloc.dart';
@@ -20,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _selectedFilter = 'all';
   @override
   void initState() {
     super.initState();
@@ -29,6 +32,45 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadData() {
     context.read<CustomerBloc>().add(LoadCustomers());
     context.read<TransactionBloc>().add(LoadDashboardData());
+  }
+
+  List<Customer> _filterCustomers(List<Customer> customers) {
+    switch (_selectedFilter) {
+      case 'overdue':
+        // Customers who haven't paid in last 30 days
+        return customers.where((customer) {
+          final lastTransaction = _getLastTransactionDate(customer.id);
+          if (lastTransaction == null) return false;
+          return DateTime.now().difference(lastTransaction).inDays > 30;
+        }).toList();
+
+      case 'balance':
+        return customers.where((customer) {
+          final balance = _getCustomerBalance(customer.id);
+          return balance > 0;
+        }).toList();
+
+      case 'settled':
+        return customers.where((customer) {
+          final balance = _getCustomerBalance(customer.id);
+          return balance == 0;
+        }).toList();
+
+      default:
+        return customers;
+    }
+  }
+
+  DateTime? _getLastTransactionDate(String customerId) {
+    final transactions = context.read<TransactionBloc>().state;
+
+    // This is simplified - you'd need to get actual transactions
+    return null;
+  }
+
+  double _getCustomerBalance(String customerId) {
+    // Simplified - you'd get from TransactionBloc state
+    return 0;
   }
 
   @override
@@ -111,6 +153,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SizedBox(height: 12),
+            // Filter Chips
+            OverdueFilter(
+              selectedFilter: _selectedFilter,
+              onFilterChanged: (filter) {
+                setState(() {
+                  _selectedFilter = filter;
+                });
+              },
+            ),
+
+            const SizedBox(height: 12),
 
             // Customer List
             BlocBuilder<CustomerBloc, CustomerState>(
@@ -125,6 +178,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (state is CustomerLoaded) {
                   if (state.customers.isEmpty) {
                     return _buildEmptyState();
+                  }
+                  final filteredCustomers = _filterCustomers(state.customers);
+
+                  if (filteredCustomers.isEmpty) {
+                    return _buildNoResultsState();
                   }
                   return Column(
                     children: state.customers
@@ -156,6 +214,31 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
         child: const Icon(Icons.add, size: 32),
+      ),
+    );
+  }
+
+  // ADD _buildNoResultsState HERE
+  Widget _buildNoResultsState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.filter_alt_off_outlined,
+              size: 64,
+              color: AppColors.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(height: 12),
+            Text('No customers match this filter', style: AppTextStyles.body),
+            const SizedBox(height: 4),
+            Text(
+              'Try selecting a different filter',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
       ),
     );
   }
