@@ -69,6 +69,8 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
         amount: event.amount,
         note: event.note,
         timestamp: event.timestamp,
+        photoPath: event.photoPath,
+        voiceNotePath: event.voiceNotePath,
       );
       final transactions = await _getTransactions(event.customerId);
       emit(TransactionLoaded(transactions));

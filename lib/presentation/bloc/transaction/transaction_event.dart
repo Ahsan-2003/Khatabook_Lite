@@ -25,6 +25,8 @@ class AddTransactionEvent extends TransactionEvent {
   final double amount;
   final String? note;
   final DateTime timestamp;
+  final String? photoPath;
+  final String? voiceNotePath;
 
   const AddTransactionEvent({
     required this.customerId,
@@ -32,10 +34,20 @@ class AddTransactionEvent extends TransactionEvent {
     required this.amount,
     this.note,
     required this.timestamp,
+    this.photoPath,
+    this.voiceNotePath,
   });
 
   @override
-  List<Object?> get props => [customerId, type, amount, note, timestamp];
+  List<Object?> get props => [
+    customerId,
+    type,
+    amount,
+    note,
+    timestamp,
+    photoPath,
+    voiceNotePath,
+  ];
 }
 
 class DeleteTransactionEvent extends TransactionEvent {
