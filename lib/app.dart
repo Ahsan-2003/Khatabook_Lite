@@ -15,6 +15,7 @@ import 'package:khatabook_lite/domain/usecases/get_transactions.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
 import 'package:khatabook_lite/presentation/bloc/transaction/transaction_bloc.dart';
 import 'package:khatabook_lite/presentation/screens/home_screen.dart';
+import 'package:khatabook_lite/presentation/screens/splash_screen.dart';
 
 class KhataBookLiteApp extends StatelessWidget {
   final CustomerRepositoryImpl customerRepository;
@@ -70,7 +71,7 @@ class KhataBookLiteApp extends StatelessWidget {
         locale: context.locale,
         supportedLocales: context.supportedLocales,
         localizationsDelegates: context.localizationDelegates,
-        home: const HomeScreen(),
+        home: const SplashScreen(),
       ),
     );
   }
