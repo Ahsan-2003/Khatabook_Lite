@@ -45,6 +45,7 @@ dependencies:
   # URL Launcher (for WhatsApp/SMS)
   url_launcher: ^6.3.2
   easy_localization: ^3.0.8
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
