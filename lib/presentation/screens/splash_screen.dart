@@ -1,0 +1,81 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:khatabook_lite/core/theme/app_colors.dart';
+import 'package:khatabook_lite/core/theme/app_text_styles.dart';
+import 'package:khatabook_lite/presentation/screens/home_screen.dart';
+import 'package:khatabook_lite/presentation/screens/onboarding_screen.dart';
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkFirstLaunch();
+  }
+
+  Future<void> _checkFirstLaunch() async {
+    // Wait for 2 seconds (splash screen display)
+    await Future.delayed(const Duration(seconds: 2));
+
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => onboardingCompleted
+              ? const HomeScreen()
+              : const OnboardingScreen(),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.primary,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // App Logo
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.book, size: 60, color: AppColors.primary),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'KhataBook Lite',
+              style: AppTextStyles.headingLarge.copyWith(
+                color: Colors.white,
+                fontSize: 28,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Digital Khata for Everyone',
+              style: AppTextStyles.body.copyWith(
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
