@@ -197,7 +197,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 30),
           Text(
             title,
-            style: AppTextStyles.headingLarge,
+            style: AppTextStyles.heading.copyWith(
+              color: Colors.white,
+              fontSize: 28,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),

@@ -59,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 20),
             Text(
               'KhataBook Lite',
-              style: AppTextStyles.headingLarge.copyWith(
+              style: AppTextStyles.heading.copyWith(
                 color: Colors.white,
                 fontSize: 28,
               ),
