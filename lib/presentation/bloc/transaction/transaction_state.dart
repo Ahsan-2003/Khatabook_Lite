@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../domain/entities/transaction.dart';
+import 'package:khatabook_lite/domain/entities/transaction.dart';
 
 abstract class TransactionState extends Equatable {
   const TransactionState();
@@ -21,17 +21,32 @@ class TransactionLoaded extends TransactionState {
   List<Object?> get props => [transactions];
 }
 
+class AllTransactionsLoaded extends TransactionState {
+  final List<Transaction> transactions;
+
+  const AllTransactionsLoaded(this.transactions);
+
+  @override
+  List<Object?> get props => [transactions];
+}
+
 class DashboardDataLoaded extends TransactionState {
   final double totalOwedToVendor;
   final double totalVendorOwes;
+  final List<Transaction> allTransactions;
 
   const DashboardDataLoaded({
     required this.totalOwedToVendor,
     required this.totalVendorOwes,
+    this.allTransactions = const [],
   });
 
   @override
-  List<Object?> get props => [totalOwedToVendor, totalVendorOwes];
+  List<Object?> get props => [
+    totalOwedToVendor,
+    totalVendorOwes,
+    allTransactions,
+  ];
 }
 
 class TransactionError extends TransactionState {

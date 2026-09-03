@@ -1,4 +1,5 @@
 import 'package:khatabook_lite/data/repositories/transaction_repository.dart';
+
 import '../entities/transaction.dart';
 
 class GetTransactions {
@@ -8,5 +9,9 @@ class GetTransactions {
 
   Future<List<Transaction>> call(String customerId) async {
     return await repository.getTransactionsByCustomer(customerId);
+  }
+
+  Future<List<Transaction>> getAllTransactions() async {
+    return await repository.getAllTransactions();
   }
 }

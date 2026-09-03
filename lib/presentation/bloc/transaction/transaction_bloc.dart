@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:khatabook_lite/domain/usecases/add_transaction.dart';
 import 'package:khatabook_lite/domain/usecases/delete_transaction.dart';
-import '../../../domain/usecases/add_transaction.dart';
-import '../../../domain/usecases/get_customer_balance.dart';
-import '../../../domain/usecases/get_dashboard_data.dart';
-import '../../../domain/usecases/get_transactions.dart';
+import 'package:khatabook_lite/domain/usecases/get_customer_balance.dart';
+import 'package:khatabook_lite/domain/usecases/get_dashboard_data.dart';
+import 'package:khatabook_lite/domain/usecases/get_transactions.dart';
 import 'transaction_event.dart';
 import 'transaction_state.dart';
 
@@ -27,6 +27,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
        _getCustomerBalance = getCustomerBalance,
        super(TransactionInitial()) {
     on<LoadTransactions>(_onLoadTransactions);
+    on<LoadAllTransactions>(_onLoadAllTransactions);
     on<AddTransactionEvent>(_onAddTransaction);
     on<DeleteTransactionEvent>(_onDeleteTransaction);
     on<LoadDashboardData>(_onLoadDashboardData);
@@ -45,6 +46,18 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     }
   }
 
+  Future<void> _onLoadAllTransactions(
+    LoadAllTransactions event,
+    Emitter<TransactionState> emit,
+  ) async {
+    try {
+      final transactions = await _getTransactions.getAllTransactions();
+      emit(AllTransactionsLoaded(transactions));
+    } catch (e) {
+      emit(TransactionError(e.toString()));
+    }
+  }
+
   Future<void> _onAddTransaction(
     AddTransactionEvent event,
     Emitter<TransactionState> emit,
@@ -55,26 +68,10 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
         type: event.type,
         amount: event.amount,
         note: event.note,
+        timestamp: event.timestamp,
       );
       final transactions = await _getTransactions(event.customerId);
       emit(TransactionLoaded(transactions));
-    } catch (e) {
-      emit(TransactionError(e.toString()));
-    }
-  }
-
-  Future<void> _onLoadDashboardData(
-    LoadDashboardData event,
-    Emitter<TransactionState> emit,
-  ) async {
-    try {
-      final dashboardData = await _getDashboardData();
-      emit(
-        DashboardDataLoaded(
-          totalOwedToVendor: dashboardData.totalOwedToVendor,
-          totalVendorOwes: dashboardData.totalVendorOwes,
-        ),
-      );
     } catch (e) {
       emit(TransactionError(e.toString()));
     }
@@ -89,6 +86,35 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
       final transactions = await _getTransactions(event.customerId);
       emit(TransactionLoaded(transactions));
     } catch (e) {
+      emit(TransactionError(e.toString()));
+    }
+  }
+
+  Future<void> _onLoadDashboardData(
+    LoadDashboardData event,
+    Emitter<TransactionState> emit,
+  ) async {
+    try {
+      final dashboardData = await _getDashboardData();
+      final allTransactions = await _getTransactions.getAllTransactions();
+
+      // Debug print
+      print('DEBUG: Loaded ${allTransactions.length} transactions');
+      for (final t in allTransactions) {
+        print(
+          'DEBUG: Transaction - Customer: ${t.customerId}, Type: ${t.type}, Amount: ${t.amount}, Date: ${t.timestamp}',
+        );
+      }
+
+      emit(
+        DashboardDataLoaded(
+          totalOwedToVendor: dashboardData.totalOwedToVendor,
+          totalVendorOwes: dashboardData.totalVendorOwes,
+          allTransactions: allTransactions,
+        ),
+      );
+    } catch (e) {
+      print('DEBUG ERROR: $e');
       emit(TransactionError(e.toString()));
     }
   }

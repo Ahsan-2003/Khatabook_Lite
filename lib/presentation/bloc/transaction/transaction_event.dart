@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../domain/entities/transaction.dart';
+import 'package:khatabook_lite/domain/entities/transaction.dart';
 
 abstract class TransactionEvent extends Equatable {
   const TransactionEvent();
@@ -17,24 +17,26 @@ class LoadTransactions extends TransactionEvent {
   List<Object?> get props => [customerId];
 }
 
+class LoadAllTransactions extends TransactionEvent {}
+
 class AddTransactionEvent extends TransactionEvent {
   final String customerId;
   final TransactionType type;
   final double amount;
   final String? note;
+  final DateTime timestamp;
 
   const AddTransactionEvent({
     required this.customerId,
     required this.type,
     required this.amount,
     this.note,
+    required this.timestamp,
   });
 
   @override
-  List<Object?> get props => [customerId, type, amount, note];
+  List<Object?> get props => [customerId, type, amount, note, timestamp];
 }
-
-class LoadDashboardData extends TransactionEvent {}
 
 class DeleteTransactionEvent extends TransactionEvent {
   final String transactionId;
@@ -48,3 +50,5 @@ class DeleteTransactionEvent extends TransactionEvent {
   @override
   List<Object?> get props => [transactionId, customerId];
 }
+
+class LoadDashboardData extends TransactionEvent {}

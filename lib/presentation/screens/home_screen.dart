@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:khatabook_lite/core/theme/app_colors.dart';
+import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/domain/entities/customer.dart';
-import 'package:khatabook_lite/presentation/screens/add_customer_screen.dart';
+import 'package:khatabook_lite/domain/entities/transaction.dart';
+import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
+import 'package:khatabook_lite/presentation/bloc/customer/customer_event.dart';
+import 'package:khatabook_lite/presentation/bloc/customer/customer_state.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_bloc.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_event.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_state.dart';
+import 'package:khatabook_lite/presentation/widgets/balance_card.dart';
+import 'package:khatabook_lite/presentation/widgets/customer_card.dart';
 import 'package:khatabook_lite/presentation/widgets/overdue_filter.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
-import '../bloc/customer/customer_bloc.dart';
-import '../bloc/customer/customer_event.dart';
-import '../bloc/customer/customer_state.dart';
-import '../bloc/transaction/transaction_bloc.dart';
-import '../bloc/transaction/transaction_event.dart';
-import '../bloc/transaction/transaction_state.dart';
-import '../widgets/balance_card.dart';
-import '../widgets/customer_card.dart';
+import 'add_customer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedFilter = 'all';
+  List<Transaction> _allTransactions = [];
+
   @override
   void initState() {
     super.initState();
@@ -34,43 +37,57 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<TransactionBloc>().add(LoadDashboardData());
   }
 
+  double _calculateBalance(String customerId) {
+    double balance = 0;
+    for (final transaction in _allTransactions) {
+      if (transaction.customerId == customerId) {
+        if (transaction.type == TransactionType.credit) {
+          balance += transaction.amount;
+        } else {
+          balance -= transaction.amount;
+        }
+      }
+    }
+    return balance;
+  }
+
   List<Customer> _filterCustomers(List<Customer> customers) {
     switch (_selectedFilter) {
-      case 'overdue':
-        // Customers who haven't paid in last 30 days
-        return customers.where((customer) {
-          final lastTransaction = _getLastTransactionDate(customer.id);
-          if (lastTransaction == null) return false;
-          return DateTime.now().difference(lastTransaction).inDays > 30;
-        }).toList();
-
       case 'balance':
         return customers.where((customer) {
-          final balance = _getCustomerBalance(customer.id);
-          return balance > 0;
+          return _calculateBalance(customer.id) > 0;
         }).toList();
 
       case 'settled':
         return customers.where((customer) {
-          final balance = _getCustomerBalance(customer.id);
-          return balance == 0;
+          return _calculateBalance(customer.id) == 0;
+        }).toList();
+
+      case 'overdue':
+        return customers.where((customer) {
+          final balance = _calculateBalance(customer.id);
+          if (balance <= 0) return false;
+
+          final customerTransactions = _allTransactions
+              .where((t) => t.customerId == customer.id)
+              .toList();
+
+          if (customerTransactions.isEmpty) return false;
+
+          customerTransactions.sort(
+            (a, b) => b.timestamp.compareTo(a.timestamp),
+          );
+          final lastTransaction = customerTransactions.first;
+          final daysSinceLast = DateTime.now()
+              .difference(lastTransaction.timestamp)
+              .inDays;
+
+          return daysSinceLast > 30;
         }).toList();
 
       default:
         return customers;
     }
-  }
-
-  DateTime? _getLastTransactionDate(String customerId) {
-    final transactions = context.read<TransactionBloc>().state;
-
-    // This is simplified - you'd need to get actual transactions
-    return null;
-  }
-
-  double _getCustomerBalance(String customerId) {
-    // Simplified - you'd get from TransactionBloc state
-    return 0;
   }
 
   @override
@@ -93,6 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
             BlocBuilder<TransactionBloc, TransactionState>(
               builder: (context, state) {
                 if (state is DashboardDataLoaded) {
+                  // Store transactions for filtering
+                  _allTransactions = state.allTransactions;
+
                   return Column(
                     children: [
                       BalanceCard(
@@ -153,6 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SizedBox(height: 12),
+
             // Filter Chips
             OverdueFilter(
               selectedFilter: _selectedFilter,
@@ -179,13 +200,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (state.customers.isEmpty) {
                     return _buildEmptyState();
                   }
+
                   final filteredCustomers = _filterCustomers(state.customers);
 
                   if (filteredCustomers.isEmpty) {
                     return _buildNoResultsState();
                   }
+
                   return Column(
-                    children: state.customers
+                    children: filteredCustomers
                         .map((customer) => CustomerCard(customer: customer))
                         .toList(),
                   );
@@ -207,38 +230,11 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
           );
-
           if (result == true) {
-            // Customer was added, reload data
             _loadData();
           }
         },
         child: const Icon(Icons.add, size: 32),
-      ),
-    );
-  }
-
-  // ADD _buildNoResultsState HERE
-  Widget _buildNoResultsState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.filter_alt_off_outlined,
-              size: 64,
-              color: AppColors.textSecondary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 12),
-            Text('No customers match this filter', style: AppTextStyles.body),
-            const SizedBox(height: 4),
-            Text(
-              'Try selecting a different filter',
-              style: AppTextStyles.caption,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -259,6 +255,30 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             Text(
               'Tap + to add your first customer',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.filter_alt_off_outlined,
+              size: 64,
+              color: AppColors.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(height: 12),
+            Text('No customers match this filter', style: AppTextStyles.body),
+            const SizedBox(height: 4),
+            Text(
+              'Try selecting a different filter',
               style: AppTextStyles.caption,
             ),
           ],

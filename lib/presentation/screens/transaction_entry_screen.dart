@@ -27,6 +27,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
 
   String _amount = '';
   bool _isSubmitting = false;
+  DateTime _selectedDate = DateTime.now(); // Class-level variable
 
   @override
   void dispose() {
@@ -80,6 +81,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
         note: _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim(),
+        timestamp: _selectedDate, // Add timestamp
       ),
     );
   }
@@ -155,6 +157,28 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   prefixIcon: Icon(Icons.note, size: 24),
                 ),
               ),
+            ),
+
+            // Date Picker
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: const Text('Transaction Date'),
+              subtitle: Text(
+                '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+              ),
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                if (date != null) {
+                  setState(() {
+                    _selectedDate = date;
+                  });
+                }
+              },
             ),
 
             // Numeric Keypad

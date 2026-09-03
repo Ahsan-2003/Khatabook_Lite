@@ -41,13 +41,14 @@ class TransactionRepositoryImpl implements TransactionRepository {
     String? note,
     String? voiceNotePath,
     String? photoPath,
+    DateTime? timestamp,
   }) async {
     final transactionModel = TransactionModel(
       id: _uuid.v4(),
       customerId: customerId,
       type: type == TransactionType.credit ? 'credit' : 'payment',
       amount: amount,
-      timestamp: DateTime.now(),
+      timestamp: timestamp ?? DateTime.now(),
       note: note,
       voiceNotePath: voiceNotePath,
       photoPath: photoPath,
@@ -124,7 +125,6 @@ class TransactionRepositoryImpl implements TransactionRepository {
     await _transactionBox.delete(id);
   }
 
-  // Helper: Get all unique customer IDs from transactions
   Set<String> _getAllCustomerIds() {
     final ids = <String>{};
     for (final transaction in _transactionBox.values) {

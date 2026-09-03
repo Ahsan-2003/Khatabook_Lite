@@ -13,6 +13,7 @@ class AddTransaction {
     String? note,
     String? voiceNotePath,
     String? photoPath,
+    DateTime? timestamp,
   }) async {
     return await repository.addTransaction(
       customerId: customerId,
@@ -21,6 +22,7 @@ class AddTransaction {
       note: note,
       voiceNotePath: voiceNotePath,
       photoPath: photoPath,
+      timestamp: timestamp,
     );
   }
 }

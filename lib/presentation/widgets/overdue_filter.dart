@@ -14,15 +14,15 @@ class OverdueFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 40,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
           _buildFilterChip('All', 'all'),
-          _buildFilterChip('Overdue', 'overdue'),
           _buildFilterChip('Has Balance', 'balance'),
           _buildFilterChip('Settled', 'settled'),
+          _buildFilterChip('Overdue (30+ days)', 'overdue'),
         ],
       ),
     );
@@ -40,10 +40,12 @@ class OverdueFilter extends StatelessWidget {
         backgroundColor: AppColors.surface,
         selectedColor: AppColors.primary.withOpacity(0.2),
         labelStyle: AppTextStyles.body.copyWith(
+          fontSize: 13,
           color: isSelected ? AppColors.primary : AppColors.textPrimary,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
         ),
         checkmarkColor: AppColors.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
       ),
     );
   }
