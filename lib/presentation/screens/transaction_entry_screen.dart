@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../domain/entities/customer.dart';
@@ -24,15 +29,89 @@ class TransactionEntryScreen extends StatefulWidget {
 
 class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   final _noteController = TextEditingController();
+  final _imagePicker = ImagePicker();
+  final _audioRecorder = AudioRecorder();
+  final _audioPlayer = AudioPlayer();
 
   String _amount = '';
   bool _isSubmitting = false;
-  DateTime _selectedDate = DateTime.now(); // Class-level variable
+  DateTime _selectedDate = DateTime.now();
+
+  File? _selectedImage;
+  String? _voiceNotePath;
+  bool _isRecording = false;
 
   @override
   void dispose() {
     _noteController.dispose();
+    _audioRecorder.dispose();
+    _audioPlayer.dispose();
     super.dispose();
+  }
+
+  // Pick image
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 70,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      _showSnackBar('Failed to pick image', isError: true);
+    }
+  }
+
+  // Toggle voice recording
+  Future<void> _toggleRecording() async {
+    try {
+      if (_isRecording) {
+        // Stop recording
+        final path = await _audioRecorder.stop();
+        setState(() {
+          _isRecording = false;
+          _voiceNotePath = path;
+        });
+      } else {
+        // Start recording
+        if (await _audioRecorder.hasPermission()) {
+          final dir = await getTemporaryDirectory();
+          final path =
+              '${dir.path}/voice_note_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+          await _audioRecorder.start(
+            const RecordConfig(
+              encoder: AudioEncoder.aacLc,
+              bitRate: 128000,
+              sampleRate: 44100,
+            ),
+            path: path,
+          );
+
+          setState(() {
+            _isRecording = true;
+          });
+        } else {
+          _showSnackBar('Microphone permission denied', isError: true);
+        }
+      }
+    } catch (e) {
+      _showSnackBar('Recording error: $e', isError: true);
+    }
+  }
+
+  // Play voice note
+  Future<void> _playVoiceNote() async {
+    if (_voiceNotePath != null) {
+      await _audioPlayer.play(DeviceFileSource(_voiceNotePath!));
+    }
   }
 
   // Add digit to amount
@@ -81,7 +160,9 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
         note: _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim(),
-        timestamp: _selectedDate, // Add timestamp
+        timestamp: _selectedDate,
+        photoPath: _selectedImage?.path,
+        voiceNotePath: _voiceNotePath,
       ),
     );
   }
@@ -122,69 +203,137 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
             _showSnackBar(state.message, isError: true);
           }
         },
-        child: Column(
-          children: [
-            // Amount Display
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              color: color.withOpacity(0.1),
-              child: Column(
-                children: [
-                  Text(
-                    widget.customer.name,
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textSecondary,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Amount Display
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                color: color.withOpacity(0.1),
+                child: Column(
+                  children: [
+                    Text(
+                      widget.customer.name,
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _amount.isEmpty ? 'Rs. 0' : 'Rs. $_amount',
-                    style: AppTextStyles.displayLarge.copyWith(color: color),
-                  ),
-                ],
-              ),
-            ),
-
-            // Note Field
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _noteController,
-                style: AppTextStyles.body,
-                decoration: const InputDecoration(
-                  hintText: 'Note (Optional)',
-                  prefixIcon: Icon(Icons.note, size: 24),
+                    const SizedBox(height: 8),
+                    Text(
+                      _amount.isEmpty ? 'Rs. 0' : 'Rs. $_amount',
+                      style: AppTextStyles.displayLarge.copyWith(color: color),
+                    ),
+                  ],
                 ),
               ),
-            ),
 
-            // Date Picker
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Transaction Date'),
-              subtitle: Text(
-                '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+              // Note Field
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  controller: _noteController,
+                  style: AppTextStyles.body,
+                  decoration: const InputDecoration(
+                    hintText: 'Note (Optional)',
+                    prefixIcon: Icon(Icons.note, size: 24),
+                  ),
+                ),
               ),
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (date != null) {
-                  setState(() {
-                    _selectedDate = date;
-                  });
-                }
-              },
-            ),
 
-            // Numeric Keypad
-            Expanded(
-              child: GridView.count(
+              // Date Picker
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Transaction Date'),
+                subtitle: Text(
+                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                ),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (date != null) {
+                    setState(() {
+                      _selectedDate = date;
+                    });
+                  }
+                },
+              ),
+
+              // Voice Note & Photo Options
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    // Voice Note Button
+                    Expanded(
+                      child: _buildOptionButton(
+                        icon: _isRecording ? Icons.stop : Icons.mic,
+                        label: _isRecording ? 'Recording...' : 'Voice Note',
+                        color: _isRecording
+                            ? AppColors.credit
+                            : AppColors.primary,
+                        onPressed: _toggleRecording,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Photo Button
+                    Expanded(
+                      child: _buildOptionButton(
+                        icon: Icons.photo_camera,
+                        label: _selectedImage != null
+                            ? 'Photo Added'
+                            : 'Add Photo',
+                        color: AppColors.payment,
+                        onPressed: _pickImage,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Voice Note Playback
+              if (_voiceNotePath != null && !_isRecording) ...[
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const Icon(
+                    Icons.play_circle,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Voice Note Recorded'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.play_arrow),
+                    onPressed: _playVoiceNote,
+                  ),
+                ),
+              ],
+
+              // Photo Preview
+              if (_selectedImage != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  height: 100,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: FileImage(_selectedImage!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // Numeric Keypad
+              GridView.count(
                 crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
@@ -204,41 +353,66 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   _buildKeypadButton('⌫', isDelete: true),
                 ],
               ),
-            ),
 
-            // Save Button
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitTransaction,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color,
-                  minimumSize: const Size(double.infinity, 60),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              // Save Button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submitTransaction,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    minimumSize: const Size(double.infinity, 60),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(icon, size: 28),
+                            const SizedBox(width: 8),
+                            Text('Save $title', style: AppTextStyles.button),
+                          ],
                         ),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(icon, size: 28),
-                          const SizedBox(width: 8),
-                          Text('Save $title', style: AppTextStyles.button),
-                        ],
-                      ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  // Build option button
+  Widget _buildOptionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 8),
+          Text(label, style: AppTextStyles.button.copyWith(fontSize: 14)),
+        ],
       ),
     );
   }
