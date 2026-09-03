@@ -19,25 +19,20 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
-  // Initialize Hive
   await Hive.initFlutter();
 
-  // Register Adapters
   Hive.registerAdapter(CustomerModelAdapter());
   Hive.registerAdapter(TransactionModelAdapter());
 
-  // Open Boxes
   final customerBox = await Hive.openBox<CustomerModel>('customers');
   final transactionBox = await Hive.openBox<TransactionModel>('transactions');
 
-  // Initialize Repositories
   final customerRepository = CustomerRepositoryImpl(customerBox: customerBox);
   final transactionRepository = TransactionRepositoryImpl(
     transactionBox: transactionBox,
     customerBox: customerBox,
   );
 
-  // Initialize Use Cases
   final getCustomers = GetCustomers(customerRepository);
   final addCustomer = AddCustomer(customerRepository);
   final deleteCustomer = DeleteCustomer(customerRepository);
