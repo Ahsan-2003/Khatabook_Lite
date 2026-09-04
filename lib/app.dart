@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,7 +15,6 @@ import 'package:khatabook_lite/domain/usecases/get_dashboard_data.dart';
 import 'package:khatabook_lite/domain/usecases/get_transactions.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
 import 'package:khatabook_lite/presentation/bloc/transaction/transaction_bloc.dart';
-import 'package:khatabook_lite/presentation/screens/home_screen.dart';
 import 'package:khatabook_lite/presentation/screens/splash_screen.dart';
 
 class KhataBookLiteApp extends StatelessWidget {
@@ -71,6 +71,16 @@ class KhataBookLiteApp extends StatelessWidget {
         locale: context.locale,
         supportedLocales: context.supportedLocales,
         localizationsDelegates: context.localizationDelegates,
+        builder: (context, child) {
+          // Force RTL for Urdu
+          if (context.locale.languageCode == 'ur') {
+            return Directionality(
+              textDirection: ui.TextDirection.rtl,
+              child: child!,
+            );
+          }
+          return child!;
+        },
         home: const SplashScreen(),
       ),
     );
