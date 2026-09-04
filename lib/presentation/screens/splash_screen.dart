@@ -20,21 +20,27 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkFirstLaunch() async {
-    // Wait for 2 seconds (splash screen display)
     await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
 
     final prefs = await SharedPreferences.getInstance();
     final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
 
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => onboardingCompleted
-              ? const HomeScreen()
-              : const OnboardingScreen(),
-        ),
-      );
+      if (onboardingCompleted) {
+        // Go directly to home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        // Show onboarding for first time
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        );
+      }
     }
   }
 
@@ -46,7 +52,6 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // App Logo
             Container(
               width: 100,
               height: 100,
