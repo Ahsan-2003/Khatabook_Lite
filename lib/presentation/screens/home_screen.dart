@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('KhataBook Lite'),
+        title: Text('app_name'.tr()),
         actions: [
           // Language Switcher
           PopupMenuButton<String>(
@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Column(
                     children: [
                       BalanceCard(
-                        title: 'Total Owed to Me',
+                        title: 'total_owed_to_me'.tr(),
                         amount: state.totalOwedToVendor,
                         color: AppColors.payment,
                         icon: Icons.arrow_downward,
@@ -212,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('My Customers', style: AppTextStyles.heading),
+                Text('my_customers'.tr(), style: AppTextStyles.heading),
                 BlocBuilder<CustomerBloc, CustomerState>(
                   builder: (context, state) {
                     if (state is CustomerLoaded) {
@@ -306,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppColors.textSecondary.withOpacity(0.5),
             ),
             const SizedBox(height: 12),
-            Text('No customers yet', style: AppTextStyles.body),
+            Text('no_customers_yet'.tr(), style: AppTextStyles.body),
             const SizedBox(height: 4),
             Text(
               'Tap + to add your first customer',
