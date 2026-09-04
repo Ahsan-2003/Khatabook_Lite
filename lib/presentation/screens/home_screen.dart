@@ -14,6 +14,8 @@ import 'package:khatabook_lite/presentation/widgets/balance_card.dart';
 import 'package:khatabook_lite/presentation/widgets/customer_card.dart';
 import 'package:khatabook_lite/presentation/widgets/overdue_filter.dart';
 import 'add_customer_screen.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -90,12 +92,65 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _changeLanguage(String languageCode) async {
+    if (context.locale.languageCode == languageCode) {
+      // Same language selected
+      return;
+    }
+
+    // Save preference
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_language', languageCode);
+
+    // Change language
+    if (mounted) {
+      context.setLocale(Locale(languageCode));
+    }
+
+    // Show confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          languageCode == 'ur' ? 'زبان تبدیل ہو گئی' : 'Language changed',
+        ),
+        backgroundColor: AppColors.payment,
+        behavior: SnackBarBehavior.fixed,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('KhataBook Lite'),
         actions: [
+          // Language Switcher
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.language),
+            onSelected: (languageCode) {
+              _changeLanguage(languageCode);
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'en',
+                child: Row(
+                  children: [Text('🇬🇧'), SizedBox(width: 8), Text('English')],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'ur',
+                child: Row(
+                  children: [
+                    Text('🇵🇰'),
+                    SizedBox(width: 8),
+                    Text('اردو (Urdu)'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
