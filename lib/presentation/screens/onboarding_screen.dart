@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/screens/home_screen.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -52,6 +53,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await prefs.setString('user_language', _selectedLanguage);
 
     if (mounted) {
+      // Apply the selected language
+      context.setLocale(Locale(_selectedLanguage));
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),

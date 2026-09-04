@@ -26,16 +26,20 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+    final savedLanguage = prefs.getString('user_language') ?? 'en';
+
+    // Apply saved language
+    if (mounted) {
+      context.setLocale(Locale(savedLanguage));
+    }
 
     if (mounted) {
       if (onboardingCompleted) {
-        // Go directly to home
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       } else {
-        // Show onboarding for first time
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const OnboardingScreen()),
