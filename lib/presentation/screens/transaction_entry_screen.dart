@@ -1,22 +1,22 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
-import '../../domain/entities/customer.dart';
-import '../../domain/entities/transaction.dart';
-import '../bloc/transaction/transaction_bloc.dart';
-import '../bloc/transaction/transaction_event.dart';
-import '../bloc/transaction/transaction_state.dart';
+import 'package:khatabook_lite/core/theme/app_colors.dart';
+import 'package:khatabook_lite/core/theme/app_text_styles.dart';
+import 'package:khatabook_lite/domain/entities/customer.dart';
+import 'package:khatabook_lite/domain/entities/transaction.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_bloc.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_event.dart';
+import 'package:khatabook_lite/presentation/bloc/transaction/transaction_state.dart';
 
 class TransactionEntryScreen extends StatefulWidget {
   final Customer customer;
   final String transactionType;
-
   const TransactionEntryScreen({
     super.key,
     required this.customer,
@@ -32,11 +32,9 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   final _imagePicker = ImagePicker();
   final _audioRecorder = AudioRecorder();
   final _audioPlayer = AudioPlayer();
-
   String _amount = '';
   bool _isSubmitting = false;
   DateTime _selectedDate = DateTime.now();
-
   File? _selectedImage;
   String? _voiceNotePath;
   bool _isRecording = false;
@@ -50,59 +48,34 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _audioPlayer.onLog.listen((msg) => print('DEBUG: AP LOG -> $msg'));
-    _audioPlayer.onPlayerComplete.listen((event) {
-      if (mounted) setState(() => _isPlayingPreview = false);
-    });
-  }
-
-  // Pick image
   Future<void> _pickImage() async {
     try {
-      final XFile? image = await _imagePicker.pickImage(
+      final image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 800,
         maxHeight: 800,
         imageQuality: 70,
       );
-
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
-      }
+      if (image != null) setState(() => _selectedImage = File(image.path));
     } catch (e) {
-      _showSnackBar('Failed to pick image', isError: true);
+      _showSnackBar('error'.tr(), isError: true);
     }
   }
 
-  // Toggle voice recording
   Future<void> _toggleRecording() async {
     try {
       if (_isRecording) {
-        // Stop recording
         final path = await _audioRecorder.stop();
-        print('DEBUG: Recording stopped at: $path');
-        print('DEBUG: File exists: ${File(path!).existsSync()}');
-        print('DEBUG: File size: ${File(path).lengthSync()}');
-
         setState(() {
           _isRecording = false;
           _voiceNotePath = path;
         });
+        _showSnackBar('voice_note_recorded'.tr());
       } else {
-        // Check permission
         if (await _audioRecorder.hasPermission()) {
           final dir = await getApplicationDocumentsDirectory();
-          // Use .wav format for better compatibility
           final path =
               '${dir.path}/voice_note_${DateTime.now().millisecondsSinceEpoch}.wav';
-
-          print('DEBUG: Starting recording at: $path');
-
           await _audioRecorder.start(
             const RecordConfig(
               encoder: AudioEncoder.wav,
@@ -111,68 +84,41 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
             ),
             path: path,
           );
-
-          setState(() {
-            _isRecording = true;
-          });
+          setState(() => _isRecording = true);
+          _showSnackBar('recording_started'.tr());
         } else {
-          _showSnackBar('Microphone permission denied', isError: true);
+          _showSnackBar('microphone_permission_denied'.tr(), isError: true);
         }
       }
     } catch (e) {
-      print('DEBUG: Recording error: $e');
-      _showSnackBar('Recording error: $e', isError: true);
+      _showSnackBar('error'.tr(), isError: true);
     }
   }
 
-  // Play preview voice note
   Future<void> _playPreviewVoiceNote() async {
     if (_voiceNotePath == null) return;
-
     try {
       if (_isPlayingPreview) {
         await _audioPlayer.stop();
         setState(() => _isPlayingPreview = false);
         return;
       }
-
-      print('DEBUG: Playing preview: $_voiceNotePath');
-      print('DEBUG: File exists: ${File(_voiceNotePath!).existsSync()}');
-
-      await _audioPlayer.setAudioContext(
-        AudioContext(
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: true,
-            stayAwake: true,
-            contentType: AndroidContentType.music,
-            usageType: AndroidUsageType.media,
-            audioFocus: AndroidAudioFocus.gain,
-          ),
-        ),
-      );
-      await _audioPlayer.setVolume(1.0);
       await _audioPlayer.play(DeviceFileSource(_voiceNotePath!));
-
       setState(() => _isPlayingPreview = true);
-      _audioPlayer.onPlayerStateChanged.listen((state) {
-        print('DEBUG: PlayerState -> $state');
+      _audioPlayer.onPlayerComplete.listen((event) {
+        if (mounted) setState(() => _isPlayingPreview = false);
       });
-
-      _audioPlayer.getDuration().then((d) => print('DEBUG: Duration -> $d'));
     } catch (e) {
-      print('DEBUG: Preview playback error: $e');
       setState(() => _isPlayingPreview = false);
     }
   }
 
-  // Add digit
   void _addDigit(String digit) {
     setState(() {
       if (_amount.length < 7) _amount += digit;
     });
   }
 
-  // Remove digit
   void _removeDigit() {
     setState(() {
       if (_amount.isNotEmpty)
@@ -180,24 +126,16 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     });
   }
 
-  // Clear amount
   void _clearAmount() {
-    setState(() {
-      _amount = '';
-    });
+    setState(() => _amount = '');
   }
 
-  // Submit transaction
   void _submitTransaction() {
     if (_amount.isEmpty || double.parse(_amount) <= 0) {
-      _showSnackBar('Please enter an amount', isError: true);
+      _showSnackBar('please_enter_amount'.tr(), isError: true);
       return;
     }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
+    setState(() => _isSubmitting = true);
     context.read<TransactionBloc>().add(
       AddTransactionEvent(
         customerId: widget.customer.id,
@@ -230,8 +168,9 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   Widget build(BuildContext context) {
     final isCredit = widget.transactionType == 'credit';
     final color = isCredit ? AppColors.credit : AppColors.payment;
-    final title = isCredit ? 'Gave (Credit)' : 'Got (Payment)';
-    final icon = isCredit ? Icons.arrow_upward : Icons.arrow_downward;
+    final title = isCredit
+        ? '${'gave'.tr()} (${'credit'.tr()})'
+        : '${'got'.tr()} (${'payment'.tr()})';
 
     return Scaffold(
       appBar: AppBar(
@@ -244,7 +183,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
           if (state is TransactionLoaded && _isSubmitting) {
             _isSubmitting = false;
             Navigator.pop(context, true);
-            _showSnackBar('Transaction saved successfully');
+            _showSnackBar('transaction_saved'.tr());
           } else if (state is TransactionError) {
             _isSubmitting = false;
             _showSnackBar(state.message, isError: true);
@@ -253,7 +192,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Amount Display
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -274,24 +212,20 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   ],
                 ),
               ),
-
-              // Note Field
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: TextField(
                   controller: _noteController,
                   style: AppTextStyles.body,
-                  decoration: const InputDecoration(
-                    hintText: 'Note (Optional)',
-                    prefixIcon: Icon(Icons.note, size: 24),
+                  decoration: InputDecoration(
+                    hintText: 'note_optional'.tr(),
+                    prefixIcon: const Icon(Icons.note, size: 24),
                   ),
                 ),
               ),
-
-              // Date Picker
               ListTile(
                 leading: const Icon(Icons.calendar_today),
-                title: const Text('Transaction Date'),
+                title: Text('transaction_date'.tr()),
                 subtitle: Text(
                   '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
                 ),
@@ -302,45 +236,76 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                     firstDate: DateTime(2020),
                     lastDate: DateTime.now(),
                   );
-                  if (date != null) {
-                    setState(() {
-                      _selectedDate = date;
-                    });
-                  }
+                  if (date != null) setState(() => _selectedDate = date);
                 },
               ),
-
-              // Voice Note & Photo Options
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     Expanded(
-                      child: _buildOptionButton(
-                        icon: _isRecording ? Icons.stop : Icons.mic,
-                        label: _isRecording ? 'Recording...' : 'Voice Note',
-                        color: _isRecording
-                            ? AppColors.credit
-                            : AppColors.primary,
+                      child: ElevatedButton(
                         onPressed: _toggleRecording,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isRecording
+                              ? AppColors.credit
+                              : AppColors.primary,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _isRecording ? Icons.stop : Icons.mic,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isRecording
+                                  ? 'recording'.tr()
+                                  : 'voice_note'.tr(),
+                              style: AppTextStyles.button.copyWith(
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildOptionButton(
-                        icon: Icons.photo_camera,
-                        label: _selectedImage != null
-                            ? 'Photo Added'
-                            : 'Add Photo',
-                        color: AppColors.payment,
+                      child: ElevatedButton(
                         onPressed: _pickImage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.payment,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.photo_camera, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              _selectedImage != null
+                                  ? 'photo_added'.tr()
+                                  : 'add_photo'.tr(),
+                              style: AppTextStyles.button.copyWith(
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-
-              // Voice Note Preview
               if (_voiceNotePath != null && !_isRecording) ...[
                 const SizedBox(height: 8),
                 Card(
@@ -352,19 +317,19 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                       size: 32,
                     ),
                     title: Text(
-                      _isPlayingPreview ? 'Playing...' : 'Voice Note Ready',
+                      _isPlayingPreview
+                          ? 'playing'.tr()
+                          : 'voice_note_ready'.tr(),
                       style: AppTextStyles.body,
                     ),
                     subtitle: Text(
-                      'Tap play to listen',
+                      'tap_to_listen'.tr(),
                       style: AppTextStyles.caption,
                     ),
                     onTap: _playPreviewVoiceNote,
                   ),
                 ),
               ],
-
-              // Photo Preview
               if (_selectedImage != null) ...[
                 const SizedBox(height: 8),
                 Container(
@@ -379,10 +344,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   ),
                 ),
               ],
-
               const SizedBox(height: 16),
-
-              // Numeric Keypad
               GridView.count(
                 crossAxisCount: 3,
                 shrinkWrap: true,
@@ -406,8 +368,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   _buildKeypadButton('⌫', isDelete: true),
                 ],
               ),
-
-              // Save Button
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton(
@@ -431,9 +391,17 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(icon, size: 28),
+                            Icon(
+                              isCredit
+                                  ? Icons.arrow_upward
+                                  : Icons.arrow_downward,
+                              size: 28,
+                            ),
                             const SizedBox(width: 8),
-                            Text('Save $title', style: AppTextStyles.button),
+                            Text(
+                              '${'save'.tr()} $title',
+                              style: AppTextStyles.button,
+                            ),
                           ],
                         ),
                 ),
@@ -445,30 +413,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     );
   }
 
-  Widget _buildOptionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Text(label, style: AppTextStyles.button.copyWith(fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildKeypadButton(
     String label, {
     bool isClear = false,
@@ -476,13 +420,12 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   }) {
     return ElevatedButton(
       onPressed: () {
-        if (isClear) {
+        if (isClear)
           _clearAmount();
-        } else if (isDelete) {
+        else if (isDelete)
           _removeDigit();
-        } else {
+        else
           _addDigit(label);
-        }
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: isClear || isDelete
