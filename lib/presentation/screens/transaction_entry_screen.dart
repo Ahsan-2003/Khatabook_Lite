@@ -70,27 +70,36 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   }
 
   // Toggle voice recording
+  // Toggle voice recording
   Future<void> _toggleRecording() async {
     try {
       if (_isRecording) {
         // Stop recording
         final path = await _audioRecorder.stop();
+        print('DEBUG: Recording stopped at path: $path');
+
         setState(() {
           _isRecording = false;
           _voiceNotePath = path;
         });
+
+        _showSnackBar('Voice note recorded successfully');
       } else {
-        // Start recording
+        // Check permission first
         if (await _audioRecorder.hasPermission()) {
-          final dir = await getTemporaryDirectory();
+          // Start recording
+          final dir = await getApplicationDocumentsDirectory();
           final path =
               '${dir.path}/voice_note_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+          print('DEBUG: Starting recording at: $path');
 
           await _audioRecorder.start(
             const RecordConfig(
               encoder: AudioEncoder.aacLc,
               bitRate: 128000,
               sampleRate: 44100,
+              numChannels: 1,
             ),
             path: path,
           );
@@ -98,29 +107,36 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
           setState(() {
             _isRecording = true;
           });
+
+          _showSnackBar('Recording started...');
         } else {
           _showSnackBar('Microphone permission denied', isError: true);
         }
       }
     } catch (e) {
+      print('DEBUG: Recording error: $e');
       _showSnackBar('Recording error: $e', isError: true);
     }
   }
 
   // Play voice note
+  // Play voice note
   Future<void> _playVoiceNote() async {
-    if (_voiceNotePath != null) {
-      await _audioPlayer.play(DeviceFileSource(_voiceNotePath!));
+    if (_voiceNotePath == null) {
+      _showSnackBar('No voice note to play', isError: true);
+      return;
     }
-  }
 
-  // Add digit to amount
-  void _addDigit(String digit) {
-    setState(() {
-      if (_amount.length < 7) {
-        _amount += digit;
-      }
-    });
+    print('DEBUG: Playing voice note from: $_voiceNotePath');
+
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(DeviceFileSource(_voiceNotePath!));
+      _showSnackBar('Playing voice note...');
+    } catch (e) {
+      print('DEBUG: Playback error: $e');
+      _showSnackBar('Failed to play voice note: $e', isError: true);
+    }
   }
 
   // Remove last digit
@@ -146,6 +162,9 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
       return;
     }
 
+    print('DEBUG: Submitting transaction');
+    print('DEBUG: Voice note path: $_voiceNotePath');
+    print('DEBUG: Photo path: ${_selectedImage?.path}');
     setState(() {
       _isSubmitting = true;
     });
