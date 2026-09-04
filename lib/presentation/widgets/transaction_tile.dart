@@ -5,14 +5,79 @@ import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/domain/entities/transaction.dart';
 
-class TransactionTile extends StatelessWidget {
+class TransactionTile extends StatefulWidget {
   final Transaction transaction;
   final VoidCallback? onDelete;
 
   const TransactionTile({super.key, required this.transaction, this.onDelete});
 
   @override
+  State<TransactionTile> createState() => _TransactionTileState();
+}
+
+class _TransactionTileState extends State<TransactionTile> {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer.onLog.listen((msg) => print('DEBUG: AP LOG -> $msg'));
+    _audioPlayer.setReleaseMode(ReleaseMode.stop);
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (mounted) setState(() => _isPlaying = false);
+    });
+  }
+
+  Future<void> _togglePlayback(String path) async {
+    try {
+      if (_isPlaying) {
+        await _audioPlayer.stop();
+        setState(() => _isPlaying = false);
+        return;
+      }
+
+      print('DEBUG: Playing: $path');
+      print('DEBUG: File exists: ${File(path).existsSync()}');
+      print('DEBUG: File size: ${File(path).lengthSync()} bytes');
+
+      // Force audio routing + volume — this is what was missing
+      await _audioPlayer.setAudioContext(
+        AudioContext(
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: true,
+            stayAwake: true,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gain,
+          ),
+        ),
+      );
+      await _audioPlayer.setVolume(1.0);
+      await _audioPlayer.play(DeviceFileSource(path));
+
+      setState(() => _isPlaying = true);
+      _audioPlayer.onPlayerStateChanged.listen((state) {
+        print('DEBUG: PlayerState -> $state');
+      });
+
+      _audioPlayer.getDuration().then((d) => print('DEBUG: Duration -> $d'));
+      print('DEBUG: Playback command sent');
+    } catch (e) {
+      print('DEBUG: Playback error: $e');
+      if (mounted) setState(() => _isPlaying = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final transaction = widget.transaction;
     final isCredit = transaction.type == TransactionType.credit;
     final color = isCredit ? AppColors.credit : AppColors.payment;
     final icon = isCredit ? Icons.arrow_upward : Icons.arrow_downward;
@@ -37,24 +102,9 @@ class TransactionTile extends StatelessWidget {
               label,
               style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _formatDate(transaction.timestamp),
-                  style: AppTextStyles.caption,
-                ),
-                if (transaction.note != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    transaction.note!,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ],
+            subtitle: Text(
+              _formatDate(transaction.timestamp),
+              style: AppTextStyles.caption,
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -66,76 +116,50 @@ class TransactionTile extends StatelessWidget {
                     fontSize: 16,
                   ),
                 ),
-                if (onDelete != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: AppColors.textSecondary,
-                      size: 20,
-                    ),
-                    onPressed: onDelete,
-                  ),
-                ],
               ],
             ),
           ),
 
-          // Attachments
-          if (transaction.voiceNotePath != null ||
-              transaction.photoPath != null)
+          if (transaction.voiceNotePath != null)
+            ListTile(
+              dense: true,
+              leading: Icon(
+                _isPlaying ? Icons.stop_circle : Icons.play_circle_fill,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                _isPlaying ? 'Playing voice note...' : 'Play voice note',
+                style: AppTextStyles.caption,
+              ),
+              onTap: () => _togglePlayback(transaction.voiceNotePath!),
+            ),
+
+          if (transaction.photoPath != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Row(
-                children: [
-                  if (transaction.voiceNotePath != null) ...[
-                    IconButton(
-                      icon: const Icon(
-                        Icons.play_circle_fill,
-                        color: AppColors.primary,
-                        size: 28,
-                      ),
-                      onPressed: () =>
-                          _playVoiceNote(transaction.voiceNotePath!),
+              padding: const EdgeInsets.all(8),
+              child: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) =>
+                        Dialog(child: Image.file(File(transaction.photoPath!))),
+                  );
+                },
+                child: Container(
+                  height: 80,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: DecorationImage(
+                      image: FileImage(File(transaction.photoPath!)),
+                      fit: BoxFit.cover,
                     ),
-                    const Text('Voice Note', style: AppTextStyles.caption),
-                  ],
-                  if (transaction.voiceNotePath != null &&
-                      transaction.photoPath != null)
-                    const SizedBox(width: 16),
-                  if (transaction.photoPath != null) ...[
-                    GestureDetector(
-                      onTap: () => _showPhoto(context, transaction.photoPath!),
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          image: DecorationImage(
-                            image: FileImage(File(transaction.photoPath!)),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                  ),
+                ),
               ),
             ),
         ],
       ),
-    );
-  }
-
-  void _playVoiceNote(String path) async {
-    final player = AudioPlayer();
-    await player.play(DeviceFileSource(path));
-  }
-
-  void _showPhoto(BuildContext context, String path) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(child: Image.file(File(path))),
     );
   }
 

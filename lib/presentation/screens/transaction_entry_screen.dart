@@ -15,7 +15,7 @@ import '../bloc/transaction/transaction_state.dart';
 
 class TransactionEntryScreen extends StatefulWidget {
   final Customer customer;
-  final String transactionType; // 'credit' or 'payment'
+  final String transactionType;
 
   const TransactionEntryScreen({
     super.key,
@@ -40,6 +40,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   File? _selectedImage;
   String? _voiceNotePath;
   bool _isRecording = false;
+  bool _isPlayingPreview = false;
 
   @override
   void dispose() {
@@ -47,6 +48,15 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     _audioRecorder.dispose();
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer.onLog.listen((msg) => print('DEBUG: AP LOG -> $msg'));
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (mounted) setState(() => _isPlayingPreview = false);
+    });
   }
 
   // Pick image
@@ -70,35 +80,33 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   }
 
   // Toggle voice recording
-  // Toggle voice recording
   Future<void> _toggleRecording() async {
     try {
       if (_isRecording) {
         // Stop recording
         final path = await _audioRecorder.stop();
-        print('DEBUG: Recording stopped at path: $path');
+        print('DEBUG: Recording stopped at: $path');
+        print('DEBUG: File exists: ${File(path!).existsSync()}');
+        print('DEBUG: File size: ${File(path).lengthSync()}');
 
         setState(() {
           _isRecording = false;
           _voiceNotePath = path;
         });
-
-        _showSnackBar('Voice note recorded successfully');
       } else {
-        // Check permission first
+        // Check permission
         if (await _audioRecorder.hasPermission()) {
-          // Start recording
           final dir = await getApplicationDocumentsDirectory();
+          // Use .wav format for better compatibility
           final path =
-              '${dir.path}/voice_note_${DateTime.now().millisecondsSinceEpoch}.m4a';
+              '${dir.path}/voice_note_${DateTime.now().millisecondsSinceEpoch}.wav';
 
           print('DEBUG: Starting recording at: $path');
 
           await _audioRecorder.start(
             const RecordConfig(
-              encoder: AudioEncoder.aacLc,
-              bitRate: 128000,
-              sampleRate: 44100,
+              encoder: AudioEncoder.wav,
+              sampleRate: 16000,
               numChannels: 1,
             ),
             path: path,
@@ -107,8 +115,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
           setState(() {
             _isRecording = true;
           });
-
-          _showSnackBar('Recording started...');
         } else {
           _showSnackBar('Microphone permission denied', isError: true);
         }
@@ -119,32 +125,58 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     }
   }
 
-  // Play voice note
-  // Play voice note
-  Future<void> _playVoiceNote() async {
-    if (_voiceNotePath == null) {
-      _showSnackBar('No voice note to play', isError: true);
-      return;
-    }
-
-    print('DEBUG: Playing voice note from: $_voiceNotePath');
+  // Play preview voice note
+  Future<void> _playPreviewVoiceNote() async {
+    if (_voiceNotePath == null) return;
 
     try {
-      await _audioPlayer.stop();
+      if (_isPlayingPreview) {
+        await _audioPlayer.stop();
+        setState(() => _isPlayingPreview = false);
+        return;
+      }
+
+      print('DEBUG: Playing preview: $_voiceNotePath');
+      print('DEBUG: File exists: ${File(_voiceNotePath!).existsSync()}');
+
+      await _audioPlayer.setAudioContext(
+        AudioContext(
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: true,
+            stayAwake: true,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gain,
+          ),
+        ),
+      );
+      await _audioPlayer.setVolume(1.0);
       await _audioPlayer.play(DeviceFileSource(_voiceNotePath!));
-      _showSnackBar('Playing voice note...');
+
+      setState(() => _isPlayingPreview = true);
+      _audioPlayer.onPlayerStateChanged.listen((state) {
+        print('DEBUG: PlayerState -> $state');
+      });
+
+      _audioPlayer.getDuration().then((d) => print('DEBUG: Duration -> $d'));
     } catch (e) {
-      print('DEBUG: Playback error: $e');
-      _showSnackBar('Failed to play voice note: $e', isError: true);
+      print('DEBUG: Preview playback error: $e');
+      setState(() => _isPlayingPreview = false);
     }
   }
 
-  // Remove last digit
+  // Add digit
+  void _addDigit(String digit) {
+    setState(() {
+      if (_amount.length < 7) _amount += digit;
+    });
+  }
+
+  // Remove digit
   void _removeDigit() {
     setState(() {
-      if (_amount.isNotEmpty) {
+      if (_amount.isNotEmpty)
         _amount = _amount.substring(0, _amount.length - 1);
-      }
     });
   }
 
@@ -162,9 +194,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
       return;
     }
 
-    print('DEBUG: Submitting transaction');
-    print('DEBUG: Voice note path: $_voiceNotePath');
-    print('DEBUG: Photo path: ${_selectedImage?.path}');
     setState(() {
       _isSubmitting = true;
     });
@@ -186,7 +215,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     );
   }
 
-  // Show snackbar
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -287,7 +315,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    // Voice Note Button
                     Expanded(
                       child: _buildOptionButton(
                         icon: _isRecording ? Icons.stop : Icons.mic,
@@ -299,7 +326,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Photo Button
                     Expanded(
                       child: _buildOptionButton(
                         icon: Icons.photo_camera,
@@ -314,18 +340,26 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                 ),
               ),
 
-              // Voice Note Playback
+              // Voice Note Preview
               if (_voiceNotePath != null && !_isRecording) ...[
                 const SizedBox(height: 8),
-                ListTile(
-                  leading: const Icon(
-                    Icons.play_circle,
-                    color: AppColors.primary,
-                  ),
-                  title: const Text('Voice Note Recorded'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.play_arrow),
-                    onPressed: _playVoiceNote,
+                Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ListTile(
+                    leading: Icon(
+                      _isPlayingPreview ? Icons.stop : Icons.play_circle,
+                      color: AppColors.primary,
+                      size: 32,
+                    ),
+                    title: Text(
+                      _isPlayingPreview ? 'Playing...' : 'Voice Note Ready',
+                      style: AppTextStyles.body,
+                    ),
+                    subtitle: Text(
+                      'Tap play to listen',
+                      style: AppTextStyles.caption,
+                    ),
+                    onTap: _playPreviewVoiceNote,
                   ),
                 ),
               ],
@@ -411,7 +445,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     );
   }
 
-  // Build option button
   Widget _buildOptionButton({
     required IconData icon,
     required String label,
@@ -436,7 +469,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     );
   }
 
-  // Build keypad button
   Widget _buildKeypadButton(
     String label, {
     bool isClear = false,
