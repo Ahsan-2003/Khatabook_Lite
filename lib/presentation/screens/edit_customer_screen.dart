@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,7 +12,6 @@ import 'package:khatabook_lite/presentation/bloc/customer/customer_state.dart';
 
 class EditCustomerScreen extends StatefulWidget {
   final Customer customer;
-
   const EditCustomerScreen({super.key, required this.customer});
 
   @override
@@ -22,10 +22,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
-
   File? _selectedImage;
   bool _isSubmitting = false;
-
   final _imagePicker = ImagePicker();
 
   @override
@@ -35,7 +33,6 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     _phoneController = TextEditingController(
       text: widget.customer.phoneNumber ?? '',
     );
-
     if (widget.customer.photoPath != null &&
         File(widget.customer.photoPath!).existsSync()) {
       _selectedImage = File(widget.customer.photoPath!);
@@ -51,29 +48,23 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   Future<void> _pickImage() async {
     try {
-      final XFile? image = await _imagePicker.pickImage(
+      final image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 600,
         maxHeight: 600,
         imageQuality: 70,
       );
-
       if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
+        setState(() => _selectedImage = File(image.path));
       }
     } catch (e) {
-      _showSnackBar('Failed to pick image', isError: true);
+      _showSnackBar('error'.tr(), isError: true);
     }
   }
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isSubmitting = true;
-      });
-
+      setState(() => _isSubmitting = true);
       context.read<CustomerBloc>().add(
         UpdateCustomerEvent(
           customerId: widget.customer.id,
@@ -101,13 +92,13 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Customer')),
+      appBar: AppBar(title: Text('edit_customer'.tr())),
       body: BlocListener<CustomerBloc, CustomerState>(
         listener: (context, state) {
           if (state is CustomerLoaded && _isSubmitting) {
             _isSubmitting = false;
             Navigator.pop(context, true);
-            _showSnackBar('Customer updated successfully');
+            _showSnackBar('customer_updated'.tr());
           } else if (state is CustomerError) {
             _isSubmitting = false;
             _showSnackBar(state.message, isError: true);
@@ -120,7 +111,6 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Photo Picker
                 Center(
                   child: GestureDetector(
                     onTap: _pickImage,
@@ -151,7 +141,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Change Photo',
+                                  'change_photo'.tr(),
                                   style: AppTextStyles.caption,
                                 ),
                               ],
@@ -159,12 +149,9 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
-                // Customer Name Field
                 Text(
-                  'Customer Name *',
+                  'customer_name'.tr(),
                   style: AppTextStyles.body.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -173,26 +160,20 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 TextFormField(
                   controller: _nameController,
                   style: AppTextStyles.body.copyWith(fontSize: 18),
-                  decoration: const InputDecoration(
-                    hintText: 'Enter customer name',
-                    prefixIcon: Icon(Icons.person, size: 28),
+                  decoration: InputDecoration(
+                    hintText: 'enter_customer_name'.tr(),
+                    prefixIcon: const Icon(Icons.person, size: 28),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a name';
-                    }
-                    if (value.trim().length < 2) {
-                      return 'Name is too short';
-                    }
+                    if (value == null || value.trim().isEmpty)
+                      return 'name_required'.tr();
+                    if (value.trim().length < 2) return 'name_too_short'.tr();
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 20),
-
-                // Phone Number Field
                 Text(
-                  'Phone Number (Optional)',
+                  'phone_number'.tr(),
                   style: AppTextStyles.body.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -202,23 +183,20 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                   controller: _phoneController,
                   style: AppTextStyles.body.copyWith(fontSize: 18),
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    hintText: '03XX-XXXXXXX',
-                    prefixIcon: Icon(Icons.phone, size: 28),
+                  decoration: InputDecoration(
+                    hintText: 'enter_phone_number'.tr(),
+                    prefixIcon: const Icon(Icons.phone, size: 28),
                   ),
                   validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      if (value.length < 10) {
-                        return 'Enter a valid phone number';
-                      }
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        value.length < 10) {
+                      return 'phone_invalid'.tr();
                     }
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 40),
-
-                // Submit Button
                 ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
@@ -237,8 +215,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text(
-                          'Update Customer',
+                      : Text(
+                          'update_customer'.tr(),
                           style: AppTextStyles.button,
                         ),
                 ),

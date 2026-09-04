@@ -1,5 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/domain/entities/customer.dart';
@@ -14,8 +16,6 @@ import 'package:khatabook_lite/presentation/widgets/balance_card.dart';
 import 'package:khatabook_lite/presentation/widgets/customer_card.dart';
 import 'package:khatabook_lite/presentation/widgets/overdue_filter.dart';
 import 'add_customer_screen.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,6 +39,25 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<TransactionBloc>().add(LoadDashboardData());
   }
 
+  void _changeLanguage(String languageCode) async {
+    if (context.locale.languageCode == languageCode) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_language', languageCode);
+
+    if (mounted) {
+      context.setLocale(Locale(languageCode));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('language_changed'.tr()),
+          backgroundColor: AppColors.payment,
+          behavior: SnackBarBehavior.fixed,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   double _calculateBalance(String customerId) {
     double balance = 0;
     for (final transaction in _allTransactions) {
@@ -56,68 +75,26 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Customer> _filterCustomers(List<Customer> customers) {
     switch (_selectedFilter) {
       case 'balance':
-        return customers.where((customer) {
-          return _calculateBalance(customer.id) > 0;
-        }).toList();
-
+        return customers.where((c) => _calculateBalance(c.id) > 0).toList();
       case 'settled':
-        return customers.where((customer) {
-          return _calculateBalance(customer.id) == 0;
-        }).toList();
-
+        return customers.where((c) => _calculateBalance(c.id) == 0).toList();
       case 'overdue':
-        return customers.where((customer) {
-          final balance = _calculateBalance(customer.id);
+        return customers.where((c) {
+          final balance = _calculateBalance(c.id);
           if (balance <= 0) return false;
-
-          final customerTransactions = _allTransactions
-              .where((t) => t.customerId == customer.id)
+          final transactions = _allTransactions
+              .where((t) => t.customerId == c.id)
               .toList();
-
-          if (customerTransactions.isEmpty) return false;
-
-          customerTransactions.sort(
-            (a, b) => b.timestamp.compareTo(a.timestamp),
-          );
-          final lastTransaction = customerTransactions.first;
-          final daysSinceLast = DateTime.now()
-              .difference(lastTransaction.timestamp)
-              .inDays;
-
-          return daysSinceLast > 30;
+          if (transactions.isEmpty) return false;
+          transactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return DateTime.now()
+                  .difference(transactions.first.timestamp)
+                  .inDays >
+              30;
         }).toList();
-
       default:
         return customers;
     }
-  }
-
-  void _changeLanguage(String languageCode) async {
-    if (context.locale.languageCode == languageCode) {
-      // Same language selected
-      return;
-    }
-
-    // Save preference
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_language', languageCode);
-
-    // Change language
-    if (mounted) {
-      context.setLocale(Locale(languageCode));
-    }
-
-    // Show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          languageCode == 'ur' ? 'زبان تبدیل ہو گئی' : 'Language changed',
-        ),
-        backgroundColor: AppColors.payment,
-        behavior: SnackBarBehavior.fixed,
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   @override
@@ -126,48 +103,27 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text('app_name'.tr()),
         actions: [
-          // Language Switcher
           PopupMenuButton<String>(
             icon: const Icon(Icons.language),
-            onSelected: (languageCode) {
-              _changeLanguage(languageCode);
-            },
+            tooltip: 'change_language'.tr(),
+            onSelected: _changeLanguage,
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'en',
-                child: Row(
-                  children: [Text('🇬🇧'), SizedBox(width: 8), Text('English')],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'ur',
-                child: Row(
-                  children: [
-                    Text('🇵🇰'),
-                    SizedBox(width: 8),
-                    Text('اردو (Urdu)'),
-                  ],
-                ),
-              ),
+              const PopupMenuItem(value: 'en', child: Text('English')),
+              const PopupMenuItem(value: 'ur', child: Text('اردو')),
             ],
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          _loadData();
-        },
+        onRefresh: () async => _loadData(),
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Dashboard Balances
             BlocBuilder<TransactionBloc, TransactionState>(
               builder: (context, state) {
                 if (state is DashboardDataLoaded) {
-                  // Store transactions for filtering
                   _allTransactions = state.allTransactions;
-
                   return Column(
                     children: [
                       BalanceCard(
@@ -178,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 12),
                       BalanceCard(
-                        title: 'I Owe Others',
+                        title: 'i_owe_others'.tr(),
                         amount: state.totalVendorOwes,
                         color: AppColors.credit,
                         icon: Icons.arrow_upward,
@@ -189,14 +145,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Column(
                   children: [
                     BalanceCard(
-                      title: 'Total Owed to Me',
+                      title: 'total_owed_to_me'.tr(),
                       amount: 0,
                       color: AppColors.payment,
                       icon: Icons.arrow_downward,
                     ),
                     const SizedBox(height: 12),
                     BalanceCard(
-                      title: 'I Owe Others',
+                      title: 'i_owe_others'.tr(),
                       amount: 0,
                       color: AppColors.credit,
                       icon: Icons.arrow_upward,
@@ -205,10 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-
             const SizedBox(height: 24),
-
-            // Section Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -217,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (context, state) {
                     if (state is CustomerLoaded) {
                       return Text(
-                        '${state.customers.length} total',
+                        '${state.customers.length} ${'total'.tr()}',
                         style: AppTextStyles.caption,
                       );
                     }
@@ -226,22 +179,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 12),
-
-            // Filter Chips
             OverdueFilter(
               selectedFilter: _selectedFilter,
               onFilterChanged: (filter) {
-                setState(() {
-                  _selectedFilter = filter;
-                });
+                setState(() => _selectedFilter = filter);
               },
             ),
-
             const SizedBox(height: 12),
-
-            // Customer List
             BlocBuilder<CustomerBloc, CustomerState>(
               builder: (context, state) {
                 if (state is CustomerLoading) {
@@ -250,29 +195,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
-
                 if (state is CustomerLoaded) {
-                  if (state.customers.isEmpty) {
-                    return _buildEmptyState();
-                  }
-
-                  final filteredCustomers = _filterCustomers(state.customers);
-
-                  if (filteredCustomers.isEmpty) {
-                    return _buildNoResultsState();
-                  }
-
+                  if (state.customers.isEmpty) return _buildEmptyState();
+                  final filtered = _filterCustomers(state.customers);
+                  if (filtered.isEmpty) return _buildNoResultsState();
                   return Column(
-                    children: filteredCustomers
-                        .map((customer) => CustomerCard(customer: customer))
+                    children: filtered
+                        .map((c) => CustomerCard(customer: c))
                         .toList(),
                   );
                 }
-
-                if (state is CustomerError) {
+                if (state is CustomerError)
                   return _buildErrorState(state.message);
-                }
-
                 return _buildEmptyState();
               },
             ),
@@ -285,9 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
           );
-          if (result == true) {
-            _loadData();
-          }
+          if (result == true) _loadData();
         },
         child: const Icon(Icons.add, size: 32),
       ),
@@ -308,10 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             Text('no_customers_yet'.tr(), style: AppTextStyles.body),
             const SizedBox(height: 4),
-            Text(
-              'Tap + to add your first customer',
-              style: AppTextStyles.caption,
-            ),
+            Text('tap_to_add_customer'.tr(), style: AppTextStyles.caption),
           ],
         ),
       ),
@@ -330,12 +259,9 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppColors.textSecondary.withOpacity(0.5),
             ),
             const SizedBox(height: 12),
-            Text('No customers match this filter', style: AppTextStyles.body),
+            Text('no_results'.tr(), style: AppTextStyles.body),
             const SizedBox(height: 4),
-            Text(
-              'Try selecting a different filter',
-              style: AppTextStyles.caption,
-            ),
+            Text('try_different_filter'.tr(), style: AppTextStyles.caption),
           ],
         ),
       ),
@@ -350,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Icon(Icons.error_outline, size: 64, color: AppColors.credit),
             const SizedBox(height: 12),
-            Text('Something went wrong', style: AppTextStyles.body),
+            Text('error'.tr(), style: AppTextStyles.body),
             const SizedBox(height: 4),
             Text(
               message,
