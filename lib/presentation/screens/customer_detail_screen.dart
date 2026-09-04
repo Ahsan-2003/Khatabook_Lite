@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,7 +18,6 @@ import 'package:khatabook_lite/presentation/widgets/transaction_tile.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
-
   const CustomerDetailScreen({super.key, required this.customer});
 
   @override
@@ -45,10 +45,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         ),
       ),
     );
-
-    if (result == true) {
-      _loadTransactions();
-    }
+    if (result == true) _loadTransactions();
   }
 
   void _navigateToEditCustomer() async {
@@ -58,10 +55,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         builder: (context) => EditCustomerScreen(customer: widget.customer),
       ),
     );
-
     if (result == true) {
       setState(() {});
-      // Also reload transactions
       _loadTransactions();
     }
   }
@@ -70,14 +65,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Customer'),
+        title: Text('delete_customer'.tr()),
         content: Text(
-          'Are you sure you want to delete ${widget.customer.name}? This will also delete all their transactions.',
+          'delete_customer_confirm'.tr(args: [widget.customer.name]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () {
@@ -85,7 +80,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               _deleteCustomer();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.credit),
-            child: const Text('Delete'),
+            child: Text('delete'.tr()),
           ),
         ],
       ),
@@ -94,11 +89,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
   void _deleteCustomer() {
     context.read<CustomerBloc>().add(DeleteCustomerEvent(widget.customer.id));
-
     Navigator.pop(context, true);
   }
 
-  // Show reminder options
   void _showReminderOptions() {
     showModalBottomSheet(
       context: context,
@@ -112,8 +105,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.chat, color: Color(0xFF25D366)),
-                title: const Text('Send via WhatsApp'),
-                subtitle: const Text('Requires WhatsApp installed'),
+                title: Text('send_via_whatsapp'.tr()),
+                subtitle: Text('requires_whatsapp'.tr()),
                 onTap: () {
                   Navigator.pop(bottomSheetContext);
                   _sendWhatsAppReminder();
@@ -121,8 +114,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.sms, color: AppColors.primary),
-                title: const Text('Send via SMS'),
-                subtitle: const Text('Uses default SMS app'),
+                title: Text('send_via_sms'.tr()),
+                subtitle: Text('uses_sms_app'.tr()),
                 onTap: () {
                   Navigator.pop(bottomSheetContext);
                   _sendSmsReminder();
@@ -135,104 +128,76 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // Send WhatsApp reminder
   Future<void> _sendWhatsAppReminder() async {
     final phoneNumber = widget.customer.phoneNumber;
-
     if (phoneNumber == null || phoneNumber.isEmpty) {
-      _showSnackBar('Customer has no phone number', isError: true);
+      _showSnackBar('no_phone_number'.tr(), isError: true);
       return;
     }
-
     final message = _buildReminderMessage();
-
-    // Clean phone number - remove all non-digits
     final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-
-    // Format for Pakistan numbers
     String formattedNumber = cleanedNumber;
-
-    // If starts with 0, replace with 92 (Pakistan country code)
     if (formattedNumber.startsWith('0')) {
       formattedNumber = '92${formattedNumber.substring(1)}';
-    }
-    // If starts with 3, add 92
-    else if (formattedNumber.startsWith('3')) {
+    } else if (formattedNumber.startsWith('3')) {
       formattedNumber = '92$formattedNumber';
     }
-
     final url =
         'https://wa.me/$formattedNumber?text=${Uri.encodeComponent(message)}';
-
     try {
       final uri = Uri.parse(url);
-      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        // Success - WhatsApp opened
-      } else {
-        _showSnackBar(
-          'Could not open WhatsApp. Please check if it is installed.',
-          isError: true,
-        );
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        _showSnackBar('whatsapp_not_available'.tr(), isError: true);
       }
     } catch (e) {
-      _showSnackBar('Failed to open WhatsApp: $e', isError: true);
+      _showSnackBar('whatsapp_not_available'.tr(), isError: true);
     }
   }
 
-  // Send SMS reminder
   Future<void> _sendSmsReminder() async {
     final phoneNumber = widget.customer.phoneNumber;
-
     if (phoneNumber == null || phoneNumber.isEmpty) {
-      _showSnackBar('Customer has no phone number', isError: true);
+      _showSnackBar('no_phone_number'.tr(), isError: true);
       return;
     }
-
     final message = _buildReminderMessage();
-
-    // Clean phone number - remove all non-digits
     final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-
     final url = 'sms:$cleanedNumber?body=${Uri.encodeComponent(message)}';
-
     try {
       final uri = Uri.parse(url);
-      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        // Success - SMS app opened
-      } else {
-        _showSnackBar('Could not open SMS app', isError: true);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        _showSnackBar('sms_not_available'.tr(), isError: true);
       }
     } catch (e) {
-      _showSnackBar('Failed to open SMS app: $e', isError: true);
+      _showSnackBar('sms_not_available'.tr(), isError: true);
     }
   }
 
-  // Build reminder message
   String _buildReminderMessage() {
-    // Get current balance
     double balance = 0;
     final state = context.read<TransactionBloc>().state;
     if (state is TransactionLoaded) {
       balance = _calculateBalance(state.transactions);
     }
-
     if (balance > 0) {
-      return 'Salam ${widget.customer.name},\n\n'
-          'This is a reminder from my shop. Your current balance is Rs. ${balance.toStringAsFixed(0)}.\n\n'
-          'Please clear your balance at your earliest convenience.\n\n'
-          'Shukriya!';
+      return 'reminder_message'.tr(
+        namedArgs: {
+          'name': widget.customer.name,
+          'amount': balance.toStringAsFixed(0),
+        },
+      );
     } else if (balance < 0) {
-      return 'Salam ${widget.customer.name},\n\n'
-          'This is to inform you that I owe you Rs. ${balance.abs().toStringAsFixed(0)}.\n\n'
-          'Shukriya!';
+      return 'owe_message'.tr(
+        namedArgs: {
+          'name': widget.customer.name,
+          'amount': balance.abs().toStringAsFixed(0),
+        },
+      );
     } else {
-      return 'Salam ${widget.customer.name},\n\n'
-          'Your account is settled. Thank you for your business!\n\n'
-          'Shukriya!';
+      return 'settled_message'.tr(namedArgs: {'name': widget.customer.name});
     }
   }
 
-  // Show snackbar
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -244,32 +209,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  void _showDeleteTransactionConfirmation(Transaction transaction) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Transaction'),
-        content: Text(
-          'Are you sure you want to delete this transaction of Rs. ${transaction.amount.toStringAsFixed(0)}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              _deleteTransaction(transaction);
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.credit),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _deleteTransaction(Transaction transaction) {
     context.read<TransactionBloc>().add(
       DeleteTransactionEvent(
@@ -277,13 +216,33 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         customerId: widget.customer.id,
       ),
     );
+    _showSnackBar('transaction_deleted'.tr());
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Transaction deleted successfully'),
-        backgroundColor: AppColors.credit,
-        behavior: SnackBarBehavior.fixed,
-        duration: Duration(seconds: 2),
+  void _showDeleteTransactionConfirmation(Transaction transaction) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('delete_transaction'.tr()),
+        content: Text(
+          'delete_transaction_confirm'.tr(
+            namedArgs: {'amount': transaction.amount.toStringAsFixed(0)},
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _deleteTransaction(transaction);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.credit),
+            child: Text('delete'.tr()),
+          ),
+        ],
       ),
     );
   }
@@ -297,7 +256,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: _showReminderOptions,
-            tooltip: 'Send Reminder',
+            tooltip: 'send_reminder'.tr(),
           ),
           IconButton(
             icon: const Icon(Icons.edit),
@@ -311,21 +270,18 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       ),
       body: Column(
         children: [
-          // Customer Info Section (Compact)
           _buildCustomerInfo(),
-
-          // Transaction History Header
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Transaction History', style: AppTextStyles.heading),
+                Text('transaction_history'.tr(), style: AppTextStyles.heading),
                 BlocBuilder<TransactionBloc, TransactionState>(
                   builder: (context, state) {
                     if (state is TransactionLoaded) {
                       return Text(
-                        '${state.transactions.length} entries',
+                        '${state.transactions.length} ${'entries'.tr()}',
                         style: AppTextStyles.caption,
                       );
                     }
@@ -335,19 +291,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ],
             ),
           ),
-
-          // Transaction History
           Expanded(
             child: BlocBuilder<TransactionBloc, TransactionState>(
               builder: (context, state) {
                 if (state is TransactionLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
                 if (state is TransactionLoaded) {
-                  if (state.transactions.isEmpty) {
-                    return _buildEmptyState();
-                  }
+                  if (state.transactions.isEmpty) return _buildEmptyState();
                   return ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: state.transactions.length,
@@ -361,19 +312,15 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     },
                   );
                 }
-
                 if (state is TransactionError) {
                   return Center(child: Text(state.message));
                 }
-
                 return _buildEmptyState();
               },
             ),
           ),
         ],
       ),
-
-      // Bottom Action Buttons (Smaller)
       bottomNavigationBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -389,7 +336,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           ),
           child: Row(
             children: [
-              // Gave (Credit) Button
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => _navigateToTransactionEntry('credit'),
@@ -406,17 +352,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       const Icon(Icons.arrow_upward, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'GAVE',
+                        '${'gave'.tr()} (${'credit'.tr()})',
                         style: AppTextStyles.button.copyWith(fontSize: 14),
                       ),
                     ],
                   ),
                 ),
               ),
-
               const SizedBox(width: 12),
-
-              // Got (Payment) Button
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => _navigateToTransactionEntry('payment'),
@@ -433,7 +376,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       const Icon(Icons.arrow_downward, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'GOT',
+                        '${'got'.tr()} (${'payment'.tr()})',
                         style: AppTextStyles.button.copyWith(fontSize: 14),
                       ),
                     ],
@@ -447,7 +390,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // Customer Info Card (Compact)
   Widget _buildCustomerInfo() {
     return Container(
       width: double.infinity,
@@ -455,10 +397,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          // Avatar
           _buildAvatar(),
           const SizedBox(width: 16),
-          // Customer Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,21 +414,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ],
             ),
           ),
-          // Balance
           BlocBuilder<TransactionBloc, TransactionState>(
             builder: (context, state) {
               double balance = 0;
-
               if (state is TransactionLoaded) {
                 balance = _calculateBalance(state.transactions);
               }
-
               final balanceColor = balance > 0
                   ? AppColors.credit
                   : balance < 0
                   ? AppColors.payment
                   : AppColors.textSecondary;
-
               return Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -501,7 +437,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('Balance', style: AppTextStyles.caption),
+                    Text('balance'.tr(), style: AppTextStyles.caption),
                     const SizedBox(height: 4),
                     Text(
                       'Rs. ${balance.abs().toStringAsFixed(0)}',
@@ -512,10 +448,10 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     ),
                     Text(
                       balance > 0
-                          ? 'Owes You'
+                          ? 'owes_you'.tr()
                           : balance < 0
-                          ? 'You Owe'
-                          : 'Settled',
+                          ? 'you_owe'.tr()
+                          : 'settled'.tr(),
                       style: AppTextStyles.caption.copyWith(
                         color: balanceColor,
                         fontWeight: FontWeight.w600,
@@ -559,7 +495,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         ),
       );
     }
-
     return Container(
       width: 60,
       height: 60,
@@ -593,9 +528,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             color: AppColors.textSecondary.withOpacity(0.5),
           ),
           const SizedBox(height: 8),
-          Text('No transactions yet', style: AppTextStyles.body),
+          Text('no_transactions'.tr(), style: AppTextStyles.body),
           const SizedBox(height: 4),
-          Text('Use buttons below to add', style: AppTextStyles.caption),
+          Text('use_buttons_below'.tr(), style: AppTextStyles.caption),
         ],
       ),
     );
