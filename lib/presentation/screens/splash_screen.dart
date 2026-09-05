@@ -1,10 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:khatabook_lite/core/services/app_lock_service.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/screens/home_screen.dart';
 import 'package:khatabook_lite/presentation/screens/onboarding_screen.dart';
+import 'package:khatabook_lite/presentation/screens/pin_entry_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,6 +16,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final AppLockService _appLockService = AppLockService();
+
   @override
   void initState() {
     super.initState();
@@ -28,24 +32,41 @@ class _SplashScreenState extends State<SplashScreen> {
     final prefs = await SharedPreferences.getInstance();
     final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
     final savedLanguage = prefs.getString('user_language') ?? 'en';
+    final lockEnabled = await _appLockService.isLockEnabled();
 
-    // Apply saved language
     if (mounted) {
       context.setLocale(Locale(savedLanguage));
     }
 
-    if (mounted) {
-      if (onboardingCompleted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-        );
-      }
+    if (!mounted) return;
+
+    if (!onboardingCompleted) {
+      // Show onboarding for first time
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    } else if (lockEnabled) {
+      // Show PIN entry
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PinEntryScreen(
+            onUnlocked: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+            },
+          ),
+        ),
+      );
+    } else {
+      // Go directly to home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
     }
   }
 
@@ -68,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              'KhataBook Lite',
+              'app_name'.tr(),
               style: AppTextStyles.heading.copyWith(
                 color: Colors.white,
                 fontSize: 28,
