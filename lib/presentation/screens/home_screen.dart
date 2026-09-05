@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:khatabook_lite/presentation/screens/analytics_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
@@ -103,6 +104,18 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text('app_name'.tr()),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.analytics_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AnalyticsScreen(),
+                ),
+              );
+            },
+            tooltip: 'analytics'.tr(),
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.language),
             tooltip: 'change_language'.tr(),
