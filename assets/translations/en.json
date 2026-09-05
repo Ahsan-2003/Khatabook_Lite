@@ -92,5 +92,18 @@
   "recording_started": "Recording started...",
   "voice_note_recorded": "Voice note recorded successfully",
   "no_voice_note": "No voice note to play",
-  "failed_to_play": "Failed to play voice note"
+  "failed_to_play": "Failed to play voice note",
+  "analytics": "Analytics",
+  "week": "Week",
+  "month": "Month",
+  "credit_given": "Credit Given",
+  "payments_received": "Payments Received",
+  "net_credit": "Net Credit",
+  "net_payment": "Net Payment",
+  "balanced": "Balanced",
+  "weekly_activity": "Weekly Activity",
+  "summary": "Summary",
+  "total_transactions": "Total Transactions",
+  "credit_transactions": "Credit Transactions",
+  "payment_transactions": "Payment Transactions"
 }

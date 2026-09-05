@@ -92,5 +92,18 @@
   "recording_started": "ریکارڈنگ شروع...",
   "voice_note_recorded": "وائس نوٹ ریکارڈ ہو گیا",
   "no_voice_note": "چلانے کے لیے کوئی وائس نوٹ نہیں",
-  "failed_to_play": "وائس نوٹ چلانے میں ناکام"
+  "failed_to_play": "وائس نوٹ چلانے میں ناکام",
+  "analytics": "تجزیات",
+  "week": "ہفتہ",
+  "month": "مہینہ",
+  "credit_given": "ادھار دیا",
+  "payments_received": "ادائیگی موصول",
+  "net_credit": "خالص ادھار",
+  "net_payment": "خالص ادائیگی",
+  "balanced": "متوازن",
+  "weekly_activity": "ہفتہ وار سرگرمی",
+  "summary": "خلاصہ",
+  "total_transactions": "کل لین دین",
+  "credit_transactions": "ادھار لین دین",
+  "payment_transactions": "ادائیگی لین دین"
 }
