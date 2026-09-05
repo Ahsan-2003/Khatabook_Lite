@@ -247,6 +247,48 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
+  Future<void> _shareLedger() async {
+    try {
+      final transactionState = context.read<TransactionBloc>().state;
+
+      if (transactionState is! TransactionLoaded) {
+        _showSnackBar('No transactions to share', isError: true);
+        return;
+      }
+
+      final transactions = transactionState.transactions;
+      final balance = _calculateBalance(transactions);
+
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final pdfService = PdfService();
+      final file = await pdfService.generateCustomerLedger(
+        customer: widget.customer,
+        transactions: transactions,
+        balance: balance,
+      );
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Share file
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Ledger for ${widget.customer.name}',
+        text:
+            'Customer Ledger: ${widget.customer.name}\nBalance: Rs. ${balance.abs().toStringAsFixed(0)}',
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      _showSnackBar('Failed to share ledger', isError: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
