@@ -60,6 +60,9 @@ dependencies:
   fl_chart: ^1.2.0
   #local auth
   local_auth: ^3.0.2
+  #contacts
+  contacts_service: ^0.6.3
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:
