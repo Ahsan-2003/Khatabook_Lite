@@ -8,6 +8,8 @@ import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_event.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_state.dart';
+import 'package:khatabook_lite/presentation/screens/contact_import_screen.dart';
+import 'contact_import_screen.dart';
 
 class AddCustomerScreen extends StatefulWidget {
   const AddCustomerScreen({super.key});
@@ -95,6 +97,29 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // In build method, add before photo picker:
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ContactImportScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.contacts),
+                    label: Text('import_from_contacts'.tr()),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+
                 Center(
                   child: GestureDetector(
                     onTap: _pickImage,

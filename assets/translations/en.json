@@ -112,5 +112,14 @@
   "total_payment_amount": "Total Payment Amount",
   "daily_activity": "Daily Activity",
   "previous_month": "Previous Month",
-  "next_month": "Next Month"
+  "next_month": "Next Month",
+  "import_contacts": "Import Contacts",
+  "import_from_contacts": "Import from Contacts",
+  "search_contacts": "Search contacts...",
+  "no_contacts": "No contacts found",
+  "permission_required": "Permission Required",
+  "contacts_permission_text": "We need permission to access your contacts",
+  "grant_permission": "Grant Permission",
+  "import_customer": "Import Customer",
+  "import": "Import"
 }

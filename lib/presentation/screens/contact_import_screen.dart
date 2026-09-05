@@ -6,7 +6,6 @@ import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_event.dart';
-import 'package:khatabook_lite/presentation/bloc/customer/customer_state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ContactImportScreen extends StatefulWidget {
@@ -37,7 +36,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
 
   Future<void> _requestPermission() async {
     final status = await Permission.contacts.request();
-    
+
     if (status.isGranted) {
       setState(() {
         _hasPermission = true;
@@ -56,19 +55,19 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
         withThumbnails: false,
         iOSLocalizedLabels: false,
       );
-      
+
       // Filter contacts with phone numbers
       final validContacts = contacts.where((c) {
         return c.phones != null && c.phones!.isNotEmpty;
       }).toList();
-      
+
       // Sort alphabetically
       validContacts.sort((a, b) {
         final nameA = a.displayName ?? '';
         final nameB = b.displayName ?? '';
         return nameA.compareTo(nameB);
       });
-      
+
       setState(() {
         _contacts = validContacts;
         _filteredContacts = validContacts;
@@ -98,7 +97,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
   Future<void> _importContact(Contact contact) async {
     final name = contact.displayName ?? 'Unknown';
     final phone = contact.phones?.first.value;
-    
+
     // Show confirmation
     final shouldImport = await showDialog<bool>(
       context: context,
@@ -127,15 +126,12 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
         ],
       ),
     );
-    
+
     if (shouldImport == true) {
       context.read<CustomerBloc>().add(
-        AddCustomerEvent(
-          name: name,
-          phoneNumber: phone,
-        ),
+        AddCustomerEvent(name: name, phoneNumber: phone),
       );
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('customer_added'.tr()),
@@ -150,9 +146,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('import_contacts'.tr()),
-      ),
+      appBar: AppBar(title: Text('import_contacts'.tr())),
       body: Column(
         children: [
           // Search Bar
@@ -178,9 +172,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
           ),
 
           // Content
-          Expanded(
-            child: _buildContent(),
-          ),
+          Expanded(child: _buildContent()),
         ],
       ),
     );
@@ -267,8 +259,13 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
             ),
           ),
         ),
-        title: Text(name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-        subtitle: phone != null ? Text(phone, style: AppTextStyles.caption) : null,
+        title: Text(
+          name,
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+        ),
+        subtitle: phone != null
+            ? Text(phone, style: AppTextStyles.caption)
+            : null,
         trailing: IconButton(
           icon: const Icon(Icons.add_circle_outline, color: AppColors.payment),
           onPressed: () => _importContact(contact),

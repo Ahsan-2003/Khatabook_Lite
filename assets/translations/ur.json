@@ -112,5 +112,14 @@
   "total_payment_amount": "کل ادائیگی رقم",
   "daily_activity": "روزانہ سرگرمی",
   "previous_month": "پچھلا مہینہ",
-  "next_month": "اگلا مہینہ"
+  "next_month": "اگلا مہینہ",
+  "import_contacts": "رابطے درآمد کریں",
+  "import_from_contacts": "رابطوں سے درآمد کریں",
+  "search_contacts": "رابطے تلاش کریں...",
+  "no_contacts": "کوئی رابطہ نہیں ملا",
+  "permission_required": "اجازت درکار ہے",
+  "contacts_permission_text": "ہمیں آپ کے رابطوں تک رسائی کی اجازت درکار ہے",
+  "grant_permission": "اجازت دیں",
+  "import_customer": "گاہک درآمد کریں",
+  "import": "درآمد"
 }
