@@ -109,5 +109,8 @@
   "activity_chart": "سرگرمی چارٹ",
   "no_data": "کوئی ڈیٹا نہیں",
   "total_credit_amount": "کل ادھار رقم",
-  "total_payment_amount": "کل ادائیگی رقم"
+  "total_payment_amount": "کل ادائیگی رقم",
+  "daily_activity": "روزانہ سرگرمی",
+  "previous_month": "پچھلا مہینہ",
+  "next_month": "اگلا مہینہ"
 }

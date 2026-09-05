@@ -17,8 +17,10 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  String _selectedPeriod = 'all'; // 'week', 'month', 'all'
+  final PageController _pageController = PageController(initialPage: 500);
   List<Transaction> _allTransactions = [];
+  int _currentMonthIndex = 0;
+  DateTime _selectedMonth = DateTime.now();
 
   @override
   void initState() {
@@ -26,35 +28,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     _loadTransactions();
   }
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   void _loadTransactions() {
     context.read<TransactionBloc>().add(LoadAllTransactions());
   }
 
-  List<Transaction> _getFilteredTransactions() {
+  DateTime _getMonthFromIndex(int index) {
     final now = DateTime.now();
+    return DateTime(now.year, now.month - index, 1);
+  }
 
-    switch (_selectedPeriod) {
-      case 'week':
-        final weekAgo = now.subtract(const Duration(days: 7));
-        return _allTransactions
-            .where((t) => t.timestamp.isAfter(weekAgo))
-            .toList();
-
-      case 'month':
-        final monthAgo = now.subtract(const Duration(days: 30));
-        return _allTransactions
-            .where((t) => t.timestamp.isAfter(monthAgo))
-            .toList();
-
-      case 'year':
-        final yearAgo = now.subtract(const Duration(days: 365));
-        return _allTransactions
-            .where((t) => t.timestamp.isAfter(yearAgo))
-            .toList();
-
-      default:
-        return _allTransactions;
-    }
+  List<Transaction> _getTransactionsForMonth(DateTime month) {
+    return _allTransactions.where((t) {
+      return t.timestamp.year == month.year && t.timestamp.month == month.month;
+    }).toList();
   }
 
   double _getTotalCredit(List<Transaction> transactions) {
@@ -69,62 +61,56 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         .fold(0, (sum, t) => sum + t.amount);
   }
 
-  Map<String, double> _getChartData(List<Transaction> transactions) {
+  Map<String, double> _getDailyDataForMonth(DateTime month) {
     final data = <String, double>{};
-    final now = DateTime.now();
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
 
-    switch (_selectedPeriod) {
-      case 'week':
-        // Last 7 days
-        for (int i = 6; i >= 0; i--) {
-          final date = now.subtract(Duration(days: i));
-          final dayKey = '${date.day}/${date.month}';
-          data[dayKey] = 0;
-        }
-        for (final transaction in transactions) {
-          final date = transaction.timestamp;
-          if (date.isAfter(now.subtract(const Duration(days: 7)))) {
-            final dayKey = '${date.day}/${date.month}';
-            data[dayKey] = (data[dayKey] ?? 0) + transaction.amount;
-          }
-        }
-        break;
+    for (int day = 1; day <= daysInMonth; day++) {
+      data['$day'] = 0;
+    }
 
-      case 'month':
-        // Last 30 days grouped by week
-        for (int i = 4; i >= 0; i--) {
-          final weekStart = now.subtract(Duration(days: (i * 7) + 7));
-          final weekEnd = now.subtract(Duration(days: i * 7));
-          final weekKey = '${weekStart.day}/${weekStart.month}';
-          data[weekKey] = 0;
-        }
-        for (final transaction in transactions) {
-          final date = transaction.timestamp;
-          if (date.isAfter(now.subtract(const Duration(days: 35)))) {
-            final diffDays = now.difference(date).inDays;
-            final weekIndex = (diffDays ~/ 7);
-            final weekStart = now.subtract(Duration(days: (weekIndex * 7) + 7));
-            final weekKey = '${weekStart.day}/${weekStart.month}';
-            data[weekKey] = (data[weekKey] ?? 0) + transaction.amount;
-          }
-        }
-        break;
-
-      default:
-        // Group by month for all transactions
-        for (final transaction in transactions) {
-          final monthKey =
-              '${transaction.timestamp.month}/${transaction.timestamp.year}';
-          data[monthKey] = (data[monthKey] ?? 0) + transaction.amount;
-        }
-        if (data.isEmpty) {
-          final currentMonthKey = '${now.month}/${now.year}';
-          data[currentMonthKey] = 0;
-        }
-        break;
+    for (final transaction in _allTransactions) {
+      if (transaction.timestamp.year == month.year &&
+          transaction.timestamp.month == month.month) {
+        final day = transaction.timestamp.day.toString();
+        data[day] = (data[day] ?? 0) + transaction.amount;
+      }
     }
 
     return data;
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      _currentMonthIndex++;
+      _selectedMonth = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month - 1,
+        1,
+      );
+    });
+    _pageController.animateToPage(
+      500 - _currentMonthIndex,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _goToNextMonth() {
+    if (_currentMonthIndex <= 0) return;
+    setState(() {
+      _currentMonthIndex--;
+      _selectedMonth = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + 1,
+        1,
+      );
+    });
+    _pageController.animateToPage(
+      500 - _currentMonthIndex,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -135,226 +121,250 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         builder: (context, state) {
           if (state is AllTransactionsLoaded) {
             _allTransactions = state.transactions;
-            print(
-              'DEBUG: Analytics loaded ${_allTransactions.length} transactions',
-            );
-            for (final t in _allTransactions) {
-              print(
-                'DEBUG: Transaction - Date: ${t.timestamp}, Type: ${t.type}, Amount: ${t.amount}',
-              );
-            }
           }
 
-          final filteredTransactions = _getFilteredTransactions();
-          final totalCredit = _getTotalCredit(filteredTransactions);
-          final totalPayment = _getTotalPayment(filteredTransactions);
-          final netBalance = totalCredit - totalPayment;
-          final chartData = _getChartData(filteredTransactions);
+          return Column(
+            children: [
+              // Month Navigation Header
+              _buildMonthNavigation(),
 
-          print('DEBUG: Selected period: $_selectedPeriod');
-          print('DEBUG: Filtered transactions: ${filteredTransactions.length}');
-          print('DEBUG: Total credit: $totalCredit');
-          print('DEBUG: Total payment: $totalPayment');
+              const SizedBox(height: 8),
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              _loadTransactions();
-            },
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Period Selector
-                  Row(
-                    children: [
-                      _buildPeriodButton('all', 'all'.tr()),
-                      const SizedBox(width: 8),
-                      _buildPeriodButton('week', 'week'.tr()),
-                      const SizedBox(width: 8),
-                      _buildPeriodButton('month', 'month'.tr()),
-                    ],
-                  ),
+              // Summary Cards
+              _buildSummarySection(),
 
-                  const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
-                  // Summary Cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: 'credit_given'.tr(),
-                          amount: totalCredit,
-                          color: AppColors.credit,
-                          icon: Icons.arrow_upward,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: 'payments_received'.tr(),
-                          amount: totalPayment,
-                          color: AppColors.payment,
-                          icon: Icons.arrow_downward,
-                        ),
-                      ),
-                    ],
-                  ),
+              // Chart Title
+              Text('daily_activity'.tr(), style: AppTextStyles.heading),
+              const SizedBox(height: 8),
 
-                  const SizedBox(height: 12),
-
-                  // Net Balance Card
-                  _buildNetBalanceCard(netBalance),
-
-                  const SizedBox(height: 24),
-
-                  // Chart
-                  Text('activity_chart'.tr(), style: AppTextStyles.heading),
-                  const SizedBox(height: 16),
-                  Container(
-                    height: 250,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: chartData.isEmpty
-                        ? Center(child: Text('no_data'.tr()))
-                        : BarChart(
-                            BarChartData(
-                              alignment: BarChartAlignment.spaceAround,
-                              maxY: _getMaxY(chartData),
-                              barTouchData: BarTouchData(
-                                touchTooltipData: BarTouchTooltipData(
-                                  getTooltipItem:
-                                      (group, groupIndex, rod, rodIndex) {
-                                        return BarTooltipItem(
-                                          'Rs. ${rod.toY.toStringAsFixed(0)}',
-                                          const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        );
-                                      },
-                                ),
-                              ),
-                              titlesData: FlTitlesData(
-                                show: true,
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    getTitlesWidget: (value, meta) {
-                                      final keys = chartData.keys.toList();
-                                      if (value.toInt() < keys.length) {
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 8,
-                                          ),
-                                          child: Text(
-                                            keys[value.toInt()],
-                                            style: AppTextStyles.caption
-                                                .copyWith(fontSize: 9),
-                                          ),
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    },
-                                  ),
-                                ),
-                                leftTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                topTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                rightTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                              ),
-                              gridData: const FlGridData(show: false),
-                              borderData: FlBorderData(show: false),
-                              barGroups: chartData.entries.map((entry) {
-                                final index = chartData.keys.toList().indexOf(
-                                  entry.key,
-                                );
-                                return BarChartGroupData(
-                                  x: index,
-                                  barRods: [
-                                    BarChartRodData(
-                                      toY: entry.value,
-                                      color: AppColors.primary,
-                                      width: 20,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Transaction Summary
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('summary'.tr(), style: AppTextStyles.heading),
-                          const SizedBox(height: 12),
-                          _buildInfoRow(
-                            'total_transactions'.tr(),
-                            '${filteredTransactions.length}',
-                          ),
-                          _buildInfoRow(
-                            'credit_transactions'.tr(),
-                            '${filteredTransactions.where((t) => t.type == TransactionType.credit).length}',
-                          ),
-                          _buildInfoRow(
-                            'payment_transactions'.tr(),
-                            '${filteredTransactions.where((t) => t.type == TransactionType.payment).length}',
-                          ),
-                          const Divider(height: 24),
-                          _buildInfoRow(
-                            'total_credit_amount'.tr(),
-                            'Rs. ${totalCredit.toStringAsFixed(0)}',
-                          ),
-                          _buildInfoRow(
-                            'total_payment_amount'.tr(),
-                            'Rs. ${totalPayment.toStringAsFixed(0)}',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              // Swipeable Chart
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentMonthIndex = 500 - index;
+                      _selectedMonth = _getMonthFromIndex(_currentMonthIndex);
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final month = _getMonthFromIndex(500 - index);
+                    return _buildMonthChart(month);
+                  },
+                ),
               ),
-            ),
+
+              const SizedBox(height: 12),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildPeriodButton(String period, String label) {
-    final isSelected = _selectedPeriod == period;
-    return Expanded(
-      child: ElevatedButton(
-        onPressed: () => setState(() => _selectedPeriod = period),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? AppColors.primary : AppColors.surface,
-          foregroundColor: isSelected ? Colors.white : AppColors.textPrimary,
-          minimumSize: const Size(double.infinity, 40),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isSelected ? AppColors.primary : AppColors.divider,
+  Widget _buildMonthNavigation() {
+    final monthName = _getMonthName(_selectedMonth);
+    final year = _selectedMonth.year.toString();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: AppColors.surface,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left, size: 28),
+            onPressed: _goToPreviousMonth,
+            tooltip: 'previous_month'.tr(),
+          ),
+          Column(
+            children: [
+              Text(
+                monthName,
+                style: AppTextStyles.heading.copyWith(fontSize: 18),
+              ),
+              Text(year, style: AppTextStyles.caption),
+            ],
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.chevron_right,
+              size: 28,
+              color: _currentMonthIndex <= 0
+                  ? AppColors.textSecondary
+                  : AppColors.textPrimary,
+            ),
+            onPressed: _currentMonthIndex <= 0 ? null : _goToNextMonth,
+            tooltip: 'next_month'.tr(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummarySection() {
+    final transactions = _getTransactionsForMonth(_selectedMonth);
+    final totalCredit = _getTotalCredit(transactions);
+    final totalPayment = _getTotalPayment(transactions);
+    final netBalance = totalCredit - totalPayment;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryCard(
+                  title: 'credit_given'.tr(),
+                  amount: totalCredit,
+                  color: AppColors.credit,
+                  icon: Icons.arrow_upward,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSummaryCard(
+                  title: 'payments_received'.tr(),
+                  amount: totalPayment,
+                  color: AppColors.payment,
+                  icon: Icons.arrow_downward,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildNetBalanceCard(netBalance),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthChart(DateTime month) {
+    final dailyData = _getDailyDataForMonth(month);
+    final transactions = _getTransactionsForMonth(month);
+
+    if (transactions.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.bar_chart,
+              size: 64,
+              color: AppColors.textSecondary.withOpacity(0.3),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'no_data'.tr(),
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: _getMaxY(dailyData),
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final keys = dailyData.keys.toList();
+                final day = keys[groupIndex];
+                return BarTooltipItem(
+                  'Day $day\nRs. ${rod.toY.toStringAsFixed(0)}',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                );
+              },
             ),
           ),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final keys = dailyData.keys.toList();
+                  if (value.toInt() < keys.length) {
+                    // Show every 5th day label to avoid clutter
+                    final day = int.parse(keys[value.toInt()]);
+                    if (day % 5 == 0 || day == 1) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          keys[value.toInt()],
+                          style: AppTextStyles.caption.copyWith(fontSize: 8),
+                        ),
+                      );
+                    }
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          gridData: FlGridData(
+            show: true,
+            horizontalInterval: _getMaxY(dailyData) / 4,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: AppColors.divider.withOpacity(0.5),
+                strokeWidth: 1,
+                dashArray: [4, 4],
+              );
+            },
+          ),
+          borderData: FlBorderData(show: false),
+          barGroups: dailyData.entries.map((entry) {
+            final index = dailyData.keys.toList().indexOf(entry.key);
+            return BarChartGroupData(
+              x: index,
+              barRods: [
+                BarChartRodData(
+                  toY: entry.value,
+                  color: entry.value > 0
+                      ? AppColors.primary
+                      : AppColors.primary.withOpacity(0.3),
+                  width: 4,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ],
+            );
+          }).toList(),
         ),
-        child: Text(label, style: AppTextStyles.body.copyWith(fontSize: 13)),
       ),
     );
   }
@@ -365,26 +375,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     required Color color,
     required IconData icon,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 20),
-                const SizedBox(width: 8),
-                Text(title, style: AppTextStyles.caption),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Rs. ${amount.toStringAsFixed(0)}',
-              style: AppTextStyles.heading.copyWith(color: color, fontSize: 18),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 6),
+              Text(title, style: AppTextStyles.caption),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Rs. ${amount.toStringAsFixed(0)}',
+            style: AppTextStyles.heading.copyWith(color: color, fontSize: 16),
+          ),
+        ],
       ),
     );
   }
@@ -401,41 +414,56 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         ? 'net_payment'.tr()
         : 'balanced'.tr();
 
-    return Card(
-      color: color.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: AppTextStyles.heading),
-            Text(
-              'Rs. ${netBalance.abs().toStringAsFixed(0)}',
-              style: AppTextStyles.heading.copyWith(color: color, fontSize: 22),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          Row(
+            children: [
+              Icon(
+                netBalance > 0
+                    ? Icons.trending_up
+                    : netBalance < 0
+                    ? Icons.trending_down
+                    : Icons.trending_flat,
+                color: color,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(label, style: AppTextStyles.heading.copyWith(fontSize: 16)),
+            ],
           ),
           Text(
-            value,
-            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+            'Rs. ${netBalance.abs().toStringAsFixed(0)}',
+            style: AppTextStyles.heading.copyWith(color: color, fontSize: 20),
           ),
         ],
       ),
     );
+  }
+
+  String _getMonthName(DateTime month) {
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return monthNames[month.month - 1];
   }
 
   double _getMaxY(Map<String, double> data) {

@@ -109,5 +109,8 @@
   "activity_chart": "Activity Chart",
   "no_data": "No data available",
   "total_credit_amount": "Total Credit Amount",
-  "total_payment_amount": "Total Payment Amount"
+  "total_payment_amount": "Total Payment Amount",
+  "daily_activity": "Daily Activity",
+  "previous_month": "Previous Month",
+  "next_month": "Next Month"
 }
