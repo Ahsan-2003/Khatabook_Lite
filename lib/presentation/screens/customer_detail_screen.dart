@@ -15,6 +15,8 @@ import 'package:khatabook_lite/presentation/bloc/transaction/transaction_state.d
 import 'package:khatabook_lite/presentation/screens/edit_customer_screen.dart';
 import 'package:khatabook_lite/presentation/screens/transaction_entry_screen.dart';
 import 'package:khatabook_lite/presentation/widgets/transaction_tile.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:khatabook_lite/core/services/pdf_service.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
@@ -295,6 +297,11 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       appBar: AppBar(
         title: Text(widget.customer.name),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _shareLedger,
+            tooltip: 'Share Ledger',
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: _showReminderOptions,
