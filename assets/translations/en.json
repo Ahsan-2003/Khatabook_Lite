@@ -105,5 +105,9 @@
   "summary": "Summary",
   "total_transactions": "Total Transactions",
   "credit_transactions": "Credit Transactions",
-  "payment_transactions": "Payment Transactions"
+  "payment_transactions": "Payment Transactions",
+  "activity_chart": "Activity Chart",
+  "no_data": "No data available",
+  "total_credit_amount": "Total Credit Amount",
+  "total_payment_amount": "Total Payment Amount"
 }

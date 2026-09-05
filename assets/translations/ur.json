@@ -105,5 +105,9 @@
   "summary": "خلاصہ",
   "total_transactions": "کل لین دین",
   "credit_transactions": "ادھار لین دین",
-  "payment_transactions": "ادائیگی لین دین"
+  "payment_transactions": "ادائیگی لین دین",
+  "activity_chart": "سرگرمی چارٹ",
+  "no_data": "کوئی ڈیٹا نہیں",
+  "total_credit_amount": "کل ادھار رقم",
+  "total_payment_amount": "کل ادائیگی رقم"
 }
