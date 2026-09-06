@@ -1,11 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_event.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class ContactImportScreen extends StatefulWidget {
   const ContactImportScreen({super.key});
@@ -34,14 +34,21 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
   }
 
   Future<void> _requestPermission() async {
-    final status = await Permission.contacts.request();
+    try {
+      final granted = await FlutterContacts.requestPermission();
 
-    if (status.isGranted) {
-      setState(() {
-        _hasPermission = true;
-      });
-      _loadContacts();
-    } else {
+      if (granted) {
+        setState(() {
+          _hasPermission = true;
+        });
+        _loadContacts();
+      } else {
+        setState(() {
+          _hasPermission = false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
       setState(() {
         _isLoading = false;
       });
@@ -50,40 +57,23 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
 
   Future<void> _loadContacts() async {
     try {
-      // Request permission using flutter_contacts
-      final granted = await FlutterContacts.requestPermission();
-
-      if (!granted) {
-        setState(() {
-          _hasPermission = false;
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // Get all contacts
       final contacts = await FlutterContacts.getContacts(
         withProperties: true,
         withPhoto: false,
       );
 
-      // Filter contacts with phone numbers
       final validContacts = contacts.where((c) {
         return c.phones.isNotEmpty;
       }).toList();
 
-      // Sort alphabetically
       validContacts.sort((a, b) {
-        final nameA = a.displayName;
-        final nameB = b.displayName;
-        return nameA.compareTo(nameB);
+        return a.displayName.compareTo(b.displayName);
       });
 
       setState(() {
         _contacts = validContacts;
         _filteredContacts = validContacts;
         _isLoading = false;
-        _hasPermission = true;
       });
     } catch (e) {
       setState(() {
@@ -105,10 +95,9 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
         _filteredContacts = _contacts;
       } else {
         _filteredContacts = _contacts.where((contact) {
-          final name = contact.displayName..toString().toLowerCase();
+          final name = contact.displayName.toLowerCase();
           final phones = contact.phones.map((p) => p.number).join(' ');
-          return name.toString().contains(query.toLowerCase()) ||
-              phones.contains(query);
+          return name.contains(query.toLowerCase()) || phones.contains(query);
         }).toList();
       }
     });
@@ -120,7 +109,6 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
         ? contact.phones.first.number
         : null;
 
-    // Show confirmation
     final shouldImport = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -129,7 +117,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name.toString(), style: AppTextStyles.heading),
+            Text(name, style: AppTextStyles.heading),
             if (phone != null) ...[
               const SizedBox(height: 4),
               Text(phone, style: AppTextStyles.caption),
@@ -151,7 +139,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
 
     if (shouldImport == true) {
       context.read<CustomerBloc>().add(
-        AddCustomerEvent(name: name.toString(), phoneNumber: phone),
+        AddCustomerEvent(name: name, phoneNumber: phone),
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +159,6 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
       appBar: AppBar(title: Text('import_contacts'.tr())),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -193,8 +180,6 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
               ),
             ),
           ),
-
-          // Content
           Expanded(child: _buildContent()),
         ],
       ),
@@ -254,8 +239,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
     return ListView.builder(
       itemCount: _filteredContacts.length,
       itemBuilder: (context, index) {
-        final contact = _filteredContacts[index];
-        return _buildContactTile(contact);
+        return _buildContactTile(_filteredContacts[index]);
       },
     );
   }
@@ -265,9 +249,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
     final phone = contact.phones.isNotEmpty
         ? contact.phones.first.number
         : null;
-    final initials = name.toString().isNotEmpty
-        ? name.toString()[0].toUpperCase()
-        : '?';
+    final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -291,7 +273,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
           ),
         ),
         title: Text(
-          name.toString(),
+          name,
           style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: phone != null

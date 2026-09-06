@@ -41,7 +41,7 @@ class _BackupScreenState extends State<BackupScreen> {
     setState(() => _isWorking = true);
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker().pickFiles(
         type: FileType.any,
         allowMultiple: false,
       );
