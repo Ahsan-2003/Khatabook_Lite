@@ -121,5 +121,18 @@
   "contacts_permission_text": "ہمیں آپ کے رابطوں تک رسائی کی اجازت درکار ہے",
   "grant_permission": "اجازت دیں",
   "import_customer": "گاہک درآمد کریں",
-  "import": "درآمد"
+  "import": "درآمد",
+  "backup_restore": "بیک اپ اور بحالی",
+  "create_backup": "بیک اپ بنائیں",
+  "backup_description": "اپنا تمام ڈیٹا فائل میں محفوظ کریں",
+  "create_share_backup": "بیک اپ بنائیں اور شیئر کریں",
+  "restore_description": "پچھلی بیک اپ فائل سے ڈیٹا بحال کریں",
+  "select_backup_file": "بیک اپ فائل منتخب کریں",
+  "backup_info": "بیک اپ فائل میں آپ کے تمام گاہک اور لین دین شامل ہیں۔ اسے محفوظ رکھیں!",
+  "backup_failed": "بیک اپ بنانے میں ناکام",
+  "restore_failed": "بیک اپ بحال کرنے میں ناکام",
+  "invalid_backup": "غلط بیک اپ فائل",
+  "restore_backup_confirm": "یہ آپ کا موجودہ ڈیٹا تبدیل کر دے گا۔ کیا آپ مطمئن ہیں؟",
+  "restore": "بحال کریں",
+  "restore_success": "{customers} گاہک اور {transactions} لین دین بحال ہو گئے"
 }
