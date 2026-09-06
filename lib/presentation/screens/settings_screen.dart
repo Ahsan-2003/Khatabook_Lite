@@ -53,6 +53,29 @@ class SettingsScreen extends StatelessWidget {
                   title: Text('about'.tr(), style: AppTextStyles.heading),
                   subtitle: Text('app_name'.tr(), style: AppTextStyles.caption),
                 ),
+
+                const Divider(height: 1),
+                // Add in ListView
+                ListTile(
+                  leading: const Icon(Icons.backup, color: AppColors.primary),
+                  title: Text(
+                    'backup_restore'.tr(),
+                    style: AppTextStyles.heading,
+                  ),
+                  subtitle: Text(
+                    'backup_description'.tr(),
+                    style: AppTextStyles.caption,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BackupScreen(),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
