@@ -121,5 +121,18 @@
   "contacts_permission_text": "We need permission to access your contacts",
   "grant_permission": "Grant Permission",
   "import_customer": "Import Customer",
-  "import": "Import"
+  "import": "Import",
+  "backup_restore": "Backup & Restore",
+  "create_backup": "Create Backup",
+  "backup_description": "Save all your data to a file you can share",
+  "create_share_backup": "Create & Share Backup",
+  "restore_description": "Restore data from a previous backup file",
+  "select_backup_file": "Select Backup File",
+  "backup_info": "Backup file contains all your customers and transactions. Keep it safe!",
+  "backup_failed": "Failed to create backup",
+  "restore_failed": "Failed to restore backup",
+  "invalid_backup": "Invalid backup file",
+  "restore_backup_confirm": "This will replace your current data. Are you sure?",
+  "restore": "Restore",
+  "restore_success": "Restored {customers} customers and {transactions} transactions"
 }
