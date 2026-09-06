@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Add these for contact read -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
 
      <!-- Add this for WhatsApp deep linking -->
     <queries>

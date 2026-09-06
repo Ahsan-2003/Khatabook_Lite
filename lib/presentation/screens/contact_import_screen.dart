@@ -1,7 +1,7 @@
-import 'package:contacts_service/contacts_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/bloc/customer/customer_bloc.dart';
@@ -51,20 +51,20 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
 
   Future<void> _loadContacts() async {
     try {
-      final contacts = await ContactsService.getContacts(
-        withThumbnails: false,
-        iOSLocalizedLabels: false,
+      final contacts = await FlutterContacts.getContacts(
+        withProperties: true,
+        withPhoto: false,
       );
 
       // Filter contacts with phone numbers
       final validContacts = contacts.where((c) {
-        return c.phones != null && c.phones!.isNotEmpty;
+        return c.phones.isNotEmpty;
       }).toList();
 
       // Sort alphabetically
       validContacts.sort((a, b) {
-        final nameA = a.displayName ?? '';
-        final nameB = b.displayName ?? '';
+        final nameA = a.displayName;
+        final nameB = b.displayName;
         return nameA.compareTo(nameB);
       });
 
@@ -77,6 +77,13 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
       setState(() {
         _isLoading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load contacts: $e'),
+          backgroundColor: AppColors.credit,
+          behavior: SnackBarBehavior.fixed,
+        ),
+      );
     }
   }
 
@@ -86,17 +93,20 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
         _filteredContacts = _contacts;
       } else {
         _filteredContacts = _contacts.where((contact) {
-          final name = contact.displayName?.toLowerCase() ?? '';
-          final phone = contact.phones?.first.value ?? '';
-          return name.contains(query.toLowerCase()) || phone.contains(query);
+          final name = contact.displayName..toString().toLowerCase();
+          final phones = contact.phones.map((p) => p.number).join(' ');
+          return name.toString().contains(query.toLowerCase()) ||
+              phones.contains(query);
         }).toList();
       }
     });
   }
 
   Future<void> _importContact(Contact contact) async {
-    final name = contact.displayName ?? 'Unknown';
-    final phone = contact.phones?.first.value;
+    final name = contact.displayName;
+    final phone = contact.phones.isNotEmpty
+        ? contact.phones.first.number
+        : null;
 
     // Show confirmation
     final shouldImport = await showDialog<bool>(
@@ -107,7 +117,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name, style: AppTextStyles.heading),
+            Text(name.toString(), style: AppTextStyles.heading),
             if (phone != null) ...[
               const SizedBox(height: 4),
               Text(phone, style: AppTextStyles.caption),
@@ -129,7 +139,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
 
     if (shouldImport == true) {
       context.read<CustomerBloc>().add(
-        AddCustomerEvent(name: name, phoneNumber: phone),
+        AddCustomerEvent(name: name.toString(), phoneNumber: phone),
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -164,6 +174,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
                         onPressed: () {
                           _searchController.clear();
                           _searchContacts('');
+                          setState(() {});
                         },
                       )
                     : null,
@@ -196,7 +207,11 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
             const SizedBox(height: 12),
             Text('permission_required'.tr(), style: AppTextStyles.heading),
             const SizedBox(height: 8),
-            Text('contacts_permission_text'.tr(), style: AppTextStyles.caption),
+            Text(
+              'contacts_permission_text'.tr(),
+              style: AppTextStyles.caption,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _requestPermission,
@@ -234,9 +249,13 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
   }
 
   Widget _buildContactTile(Contact contact) {
-    final name = contact.displayName ?? 'Unknown';
-    final phone = contact.phones?.first.value;
-    final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final name = contact.displayName;
+    final phone = contact.phones.isNotEmpty
+        ? contact.phones.first.number
+        : null;
+    final initials = name.toString().isNotEmpty
+        ? name.toString()[0].toUpperCase()
+        : '?';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -260,7 +279,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
           ),
         ),
         title: Text(
-          name,
+          name.toString(),
           style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: phone != null

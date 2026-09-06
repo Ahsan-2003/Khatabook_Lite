@@ -119,7 +119,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                     ),
                   ),
                 ),
-
                 Center(
                   child: GestureDetector(
                     onTap: _pickImage,
