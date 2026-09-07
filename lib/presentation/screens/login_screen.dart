@@ -28,6 +28,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  String _formatPhoneNumber(String phone) {
+    String cleaned = phone.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (cleaned.startsWith('0')) {
+      return '+92${cleaned.substring(1)}';
+    } else if (cleaned.startsWith('92')) {
+      return '+$cleaned';
+    } else if (cleaned.startsWith('3')) {
+      return '+92$cleaned';
+    }
+    return cleaned;
+  }
+
   Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
 
@@ -38,17 +51,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Format phone number with country code
-    String formattedPhone = phone;
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '+92${formattedPhone.substring(1)}';
-    } else if (formattedPhone.startsWith('3')) {
-      formattedPhone = '+92$formattedPhone';
-    }
+    final formattedPhone = _formatPhoneNumber(phone);
+    print('DEBUG: Sending OTP to: $formattedPhone');
 
     await _authService.sendOtp(
       phoneNumber: formattedPhone,
       onCodeSent: (verificationId) {
+        print('DEBUG: OTP sent, verificationId: $verificationId');
         setState(() {
           _verificationId = verificationId;
           _isOtpSent = true;
@@ -57,6 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _showSnackBar('OTP sent successfully');
       },
       onError: (error) {
+        print('DEBUG: OTP error: $error');
         setState(() => _isLoading = false);
         _showSnackBar(error, isError: true);
       },
@@ -79,11 +89,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (success) {
+      print('DEBUG: OTP verified successfully');
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     } else {
+      print('DEBUG: OTP verification failed');
       setState(() => _isLoading = false);
       _showSnackBar('Invalid OTP', isError: true);
     }
@@ -122,8 +134,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.phone,
                 style: AppTextStyles.body.copyWith(fontSize: 18),
                 decoration: InputDecoration(
-                  hintText: '03XX-XXXXXXX',
+                  hintText: '0300 1234567',
                   prefixIcon: const Icon(Icons.phone),
+                  // hintText: 'enter_phone_number'.tr(),
                 ),
               ),
               const SizedBox(height: 20),
@@ -132,10 +145,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text('send_otp'.tr()),
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text('send_otp'.tr(), style: AppTextStyles.button),
               ),
             ] else ...[
               // OTP Input
@@ -159,12 +182,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text('verify_otp'.tr()),
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text('verify_otp'.tr(), style: AppTextStyles.button),
               ),
-              TextButton(onPressed: _sendOtp, child: Text('resend_otp'.tr())),
+              TextButton(
+                onPressed: _isLoading ? null : _sendOtp,
+                child: Text('resend_otp'.tr()),
+              ),
             ],
           ],
         ),

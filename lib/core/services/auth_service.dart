@@ -13,10 +13,14 @@ class AuthService {
     return prefs.getBool(_userLoggedInKey) ?? false;
   }
 
-  // Get current user phone
-  Future<String?> getUserPhone() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_userPhoneKey);
+  // Get current user
+  User? getCurrentUser() {
+    return _auth.currentUser;
+  }
+
+  // Get user phone number
+  String? getUserPhone() {
+    return _auth.currentUser?.phoneNumber;
   }
 
   // Send OTP
@@ -29,7 +33,7 @@ class AuthService {
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto verification (only works on some devices)
+          // Auto verification on some devices
           await _auth.signInWithCredential(credential);
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -60,11 +64,11 @@ class AuthService {
 
       // Save login state
       final prefs = await SharedPreferences.getInstance();
-      final phone = _auth.currentUser?.phoneNumber;
-      if (phone != null) {
-        await prefs.setString(_userPhoneKey, phone);
-      }
       await prefs.setBool(_userLoggedInKey, true);
+      await prefs.setString(
+        _userPhoneKey,
+        _auth.currentUser?.phoneNumber ?? '',
+      );
 
       return true;
     } catch (e) {

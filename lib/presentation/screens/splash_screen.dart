@@ -2,9 +2,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:khatabook_lite/core/services/app_lock_service.dart';
+import 'package:khatabook_lite/core/services/auth_service.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/screens/home_screen.dart';
+import 'package:khatabook_lite/presentation/screens/login_screen.dart';
 import 'package:khatabook_lite/presentation/screens/onboarding_screen.dart';
 import 'package:khatabook_lite/presentation/screens/pin_entry_screen.dart';
 
@@ -17,6 +19,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   final AppLockService _appLockService = AppLockService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -33,6 +36,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
     final savedLanguage = prefs.getString('user_language') ?? 'en';
     final lockEnabled = await _appLockService.isLockEnabled();
+    final isLoggedIn = await _authService.isLoggedIn();
 
     if (mounted) {
       context.setLocale(Locale(savedLanguage));
@@ -41,13 +45,19 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (!onboardingCompleted) {
-      // Show onboarding for first time
+      // First time - show onboarding
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const OnboardingScreen()),
       );
+    } else if (!isLoggedIn) {
+      // Not logged in - show login
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
     } else if (lockEnabled) {
-      // Show PIN entry
+      // Logged in with lock - show PIN entry
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -62,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen> {
         ),
       );
     } else {
-      // Go directly to home
+      // Logged in no lock - go home
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -93,13 +103,6 @@ class _SplashScreenState extends State<SplashScreen> {
               style: AppTextStyles.heading.copyWith(
                 color: Colors.white,
                 fontSize: 28,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Digital Khata for Everyone',
-              style: AppTextStyles.body.copyWith(
-                color: Colors.white.withOpacity(0.8),
               ),
             ),
             const SizedBox(height: 40),
