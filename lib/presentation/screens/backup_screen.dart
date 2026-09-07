@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:khatabook_lite/core/services/backup_service.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
+import 'package:file_picker/file_picker.dart' as file_picker;
 
 class BackupScreen extends StatefulWidget {
   const BackupScreen({super.key});
@@ -41,8 +41,8 @@ class _BackupScreenState extends State<BackupScreen> {
     setState(() => _isWorking = true);
 
     try {
-      final result = await FilePicker().pickFiles(
-        type: FileType.any,
+      final result = await file_picker.FilePicker.platform.pickFiles(
+        type: file_picker.FileType.any,
         allowMultiple: false,
       );
 
