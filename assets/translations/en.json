@@ -168,5 +168,8 @@
   "send_all_reminders": "Send All Reminders",
   "no_customers_with_balance": "No customers with outstanding balance",
   "reminders_sent": "Sent {count} reminders",
-  "reminder_info": "Reminders are sent via WhatsApp. Make sure WhatsApp is installed on your device."
+  "reminder_info": "Reminders are sent via WhatsApp. Make sure WhatsApp is installed on your device.",
+  "reminders_scheduled": "Reminders scheduled successfully",
+  "reminders_cancelled": "Reminders cancelled",
+  "frequency_updated": "Frequency updated"
 }
