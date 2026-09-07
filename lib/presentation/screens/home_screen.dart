@@ -1,8 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:khatabook_lite/presentation/screens/analytics_screen.dart';
-import 'package:khatabook_lite/presentation/screens/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
@@ -17,7 +15,10 @@ import 'package:khatabook_lite/presentation/bloc/transaction/transaction_state.d
 import 'package:khatabook_lite/presentation/widgets/balance_card.dart';
 import 'package:khatabook_lite/presentation/widgets/customer_card.dart';
 import 'package:khatabook_lite/presentation/widgets/overdue_filter.dart';
+import 'package:khatabook_lite/presentation/widgets/empty_state_widget.dart';
 import 'add_customer_screen.dart';
+import 'analytics_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -106,16 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text('app_name'.tr()),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.analytics_outlined),
+            tooltip: 'analytics'.tr(),
             onPressed: () {
               Navigator.push(
                 context,
@@ -124,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             },
-            tooltip: 'analytics'.tr(),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.language),
@@ -135,7 +127,21 @@ class _HomeScreenState extends State<HomeScreen> {
               const PopupMenuItem(value: 'ur', child: Text('اردو')),
             ],
           ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'settings'.tr(),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'refresh'.tr(),
+            onPressed: _loadData,
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -143,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Dashboard Balances
             BlocBuilder<TransactionBloc, TransactionState>(
               builder: (context, state) {
                 if (state is DashboardDataLoaded) {
@@ -184,7 +191,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+
             const SizedBox(height: 24),
+
+            // Section Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -202,14 +212,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+
             const SizedBox(height: 12),
+
+            // Filter Chips
             OverdueFilter(
               selectedFilter: _selectedFilter,
               onFilterChanged: (filter) {
                 setState(() => _selectedFilter = filter);
               },
             ),
+
             const SizedBox(height: 12),
+
+            // Customer List
             BlocBuilder<CustomerBloc, CustomerState>(
               builder: (context, state) {
                 if (state is CustomerLoading) {
@@ -218,19 +234,49 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
+
                 if (state is CustomerLoaded) {
-                  if (state.customers.isEmpty) return _buildEmptyState();
-                  final filtered = _filterCustomers(state.customers);
-                  if (filtered.isEmpty) return _buildNoResultsState();
+                  if (state.customers.isEmpty) {
+                    return EmptyStateWidget(
+                      icon: Icons.people_outline,
+                      title: 'no_customers_yet'.tr(),
+                      subtitle: 'tap_to_add_customer'.tr(),
+                    );
+                  }
+
+                  final filteredCustomers = _filterCustomers(state.customers);
+
+                  if (filteredCustomers.isEmpty) {
+                    return EmptyStateWidget(
+                      icon: Icons.filter_alt_off_outlined,
+                      title: 'no_results'.tr(),
+                      subtitle: 'try_different_filter'.tr(),
+                    );
+                  }
+
                   return Column(
-                    children: filtered
-                        .map((c) => CustomerCard(customer: c))
+                    children: filteredCustomers
+                        .asMap()
+                        .entries
+                        .map(
+                          (entry) => CustomerCard(
+                            customer: entry.value,
+                            index: entry.key,
+                          ),
+                        )
                         .toList(),
                   );
                 }
-                if (state is CustomerError)
-                  return _buildErrorState(state.message);
-                return _buildEmptyState();
+
+                if (state is CustomerError) {
+                  return EmptyStateWidget(
+                    icon: Icons.error_outline,
+                    title: 'error'.tr(),
+                    subtitle: state.message,
+                  );
+                }
+
+                return const SizedBox.shrink();
               },
             ),
           ],
@@ -244,70 +290,10 @@ class _HomeScreenState extends State<HomeScreen> {
           );
           if (result == true) _loadData();
         },
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add, size: 32),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.people_outline,
-              size: 64,
-              color: AppColors.textSecondary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 12),
-            Text('no_customers_yet'.tr(), style: AppTextStyles.body),
-            const SizedBox(height: 4),
-            Text('tap_to_add_customer'.tr(), style: AppTextStyles.caption),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNoResultsState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.filter_alt_off_outlined,
-              size: 64,
-              color: AppColors.textSecondary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 12),
-            Text('no_results'.tr(), style: AppTextStyles.body),
-            const SizedBox(height: 4),
-            Text('try_different_filter'.tr(), style: AppTextStyles.caption),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String message) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Center(
-        child: Column(
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: AppColors.credit),
-            const SizedBox(height: 12),
-            Text('error'.tr(), style: AppTextStyles.body),
-            const SizedBox(height: 4),
-            Text(
-              message,
-              style: AppTextStyles.caption,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }
