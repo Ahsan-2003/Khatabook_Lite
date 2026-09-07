@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "330307219898",
+    "project_id": "khatabook-lite-7230f",
+    "storage_bucket": "khatabook-lite-7230f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:330307219898:android:8f755d7d0c23c23c38ed83",
+        "android_client_info": {
+          "package_name": "com.example.khatabook_lite"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDk1MM93isQOuevzcmrT4TL0k6C56sozQc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
