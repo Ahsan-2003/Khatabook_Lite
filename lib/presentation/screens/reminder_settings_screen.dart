@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:khatabook_lite/core/services/background_service.dart';
 import 'package:khatabook_lite/core/services/reminder_service.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
@@ -13,6 +14,8 @@ class ReminderSettingsScreen extends StatefulWidget {
 
 class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
   final ReminderService _reminderService = ReminderService();
+  final BackgroundService _backgroundService = BackgroundService();
+
   bool _reminderEnabled = false;
   String _frequency = 'weekly';
   bool _isSending = false;
@@ -38,6 +41,14 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
     setState(() {
       _reminderEnabled = value;
     });
+
+    if (value) {
+      await _backgroundService.scheduleReminderCheck(frequency: _frequency);
+      _showSnackBar('reminders_scheduled'.tr());
+    } else {
+      await _backgroundService.cancelReminderCheck();
+      _showSnackBar('reminders_cancelled'.tr());
+    }
   }
 
   Future<void> _changeFrequency(String value) async {
@@ -45,6 +56,12 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
     setState(() {
       _frequency = value;
     });
+
+    if (_reminderEnabled) {
+      await _backgroundService.cancelReminderCheck();
+      await _backgroundService.scheduleReminderCheck(frequency: value);
+      _showSnackBar('frequency_updated'.tr());
+    }
   }
 
   Future<void> _sendAllRemindersNow() async {
@@ -53,13 +70,7 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
     final customers = _reminderService.getCustomersWithBalance();
 
     if (customers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('no_customers_with_balance'.tr()),
-          backgroundColor: AppColors.textSecondary,
-          behavior: SnackBarBehavior.fixed,
-        ),
-      );
+      _showSnackBar('no_customers_with_balance'.tr());
       setState(() => _isSending = false);
       return;
     }
@@ -67,13 +78,16 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
     final sentCount = await _reminderService.sendAllReminders();
 
     setState(() => _isSending = false);
+    _showSnackBar(
+      'reminders_sent'.tr(namedArgs: {'count': sentCount.toString()}),
+    );
+  }
 
+  void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'reminders_sent'.tr(namedArgs: {'count': sentCount.toString()}),
-        ),
-        backgroundColor: AppColors.payment,
+        content: Text(message),
+        backgroundColor: isError ? AppColors.credit : AppColors.payment,
         behavior: SnackBarBehavior.fixed,
         duration: const Duration(seconds: 3),
       ),
@@ -87,7 +101,6 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Enable/Disable Card
           Card(
             child: Column(
               children: [
@@ -104,19 +117,12 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
                   onChanged: _toggleReminder,
                   activeColor: AppColors.primary,
                 ),
-
                 if (_reminderEnabled) ...[
                   const Divider(height: 1),
-
-                  // Frequency Selection
                   ListTile(
                     title: Text(
                       'reminder_frequency'.tr(),
                       style: AppTextStyles.body,
-                    ),
-                    subtitle: Text(
-                      _frequency.tr(),
-                      style: AppTextStyles.caption,
                     ),
                     trailing: DropdownButton<String>(
                       value: _frequency,
@@ -143,10 +149,7 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Send Now Card
           Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -191,31 +194,6 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.payment,
                       minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Info Card
-          Card(
-            color: AppColors.primary.withOpacity(0.05),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: AppColors.credit),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'reminder_info'.tr(),
-                      style: AppTextStyles.caption,
                     ),
                   ),
                 ],
