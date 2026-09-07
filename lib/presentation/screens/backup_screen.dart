@@ -5,7 +5,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:khatabook_lite/core/services/backup_service.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
-import 'package:file_picker/file_picker.dart' as file_picker;
+// import 'package:file_picker/file_picker.dart' as file_picker;
+import 'package:file_picker/file_picker.dart';
 
 class BackupScreen extends StatefulWidget {
   const BackupScreen({super.key});
@@ -41,13 +42,12 @@ class _BackupScreenState extends State<BackupScreen> {
     setState(() => _isWorking = true);
 
     try {
-      final result = await file_picker.FilePicker.platform.pickFiles(
-        type: file_picker.FileType.any,
-        allowMultiple: false,
+      final PlatformFile? pickedFile = await FilePicker.pickFile(
+        type: FileType.any,
       );
 
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
+      if (pickedFile != null && pickedFile.path != null) {
+        final file = File(pickedFile.path!);
         final content = await file.readAsString();
 
         if (!_backupService.isValidBackup(content)) {
@@ -87,6 +87,7 @@ class _BackupScreenState extends State<BackupScreen> {
           );
         }
       }
+      // pickedFile == null → user canceled, no action needed
     } catch (e) {
       _showSnackBar('restore_failed'.tr(), isError: true);
     } finally {
@@ -230,7 +231,7 @@ class _BackupScreenState extends State<BackupScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.info),
+                  Icon(Icons.info_outline, color: AppColors.credit),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
