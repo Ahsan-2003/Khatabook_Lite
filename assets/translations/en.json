@@ -155,5 +155,18 @@
   "offline_first": "Offline First",
   "offline_first_desc": "App works fully offline without internet connection",
   "privacy": "Privacy",
-  "privacy_desc": "Your data is never shared with third parties"
+  "privacy_desc": "Your data is never shared with third parties",
+  "auto_reminders": "Auto Reminders",
+  "enable_reminders": "Enable Auto Reminders",
+  "enable_reminders_desc": "Automatically send reminders to customers who owe money",
+  "reminder_frequency": "Reminder Frequency",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+  "send_now": "Send Reminders Now",
+  "send_now_desc": "Send reminders to all customers with outstanding balance",
+  "send_all_reminders": "Send All Reminders",
+  "no_customers_with_balance": "No customers with outstanding balance",
+  "reminders_sent": "Sent {count} reminders",
+  "reminder_info": "Reminders are sent via WhatsApp. Make sure WhatsApp is installed on your device."
 }
