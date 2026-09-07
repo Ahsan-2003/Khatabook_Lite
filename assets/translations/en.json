@@ -140,5 +140,10 @@
   "phone_login_subtitle": "We'll send you a verification code",
   "send_otp": "Send OTP",
   "verify_otp": "Verify OTP",
-  "resend_otp": "Resend OTP"
+  "resend_otp": "Resend OTP",
+  "speak_amount": "Speak Amount",
+  "listening": "Listening...",
+  "listening_hint": "Speak the amount now...",
+  "speech_not_available": "Speech recognition not available",
+  "speech_error": "Failed to start speech recognition"
 }

@@ -140,5 +140,10 @@
   "phone_login_subtitle": "ہم آپ کو تصدیقی کوڈ بھیجیں گے",
   "send_otp": "او ٹی پی بھیجیں",
   "verify_otp": "او ٹی پی کی تصدیق کریں",
-  "resend_otp": "او ٹی پی دوبارہ بھیجیں"
+  "resend_otp": "او ٹی پی دوبارہ بھیجیں",
+  "speak_amount": "رقم بولیں",
+  "listening": "سن رہے ہیں...",
+  "listening_hint": "اب رقم بولیں...",
+  "speech_not_available": "آواز کی شناخت دستیاب نہیں",
+  "speech_error": "آواز کی شناخت شروع کرنے میں ناکام"
 }

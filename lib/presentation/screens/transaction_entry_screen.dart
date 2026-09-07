@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/domain/entities/customer.dart';
@@ -13,6 +14,7 @@ import 'package:khatabook_lite/domain/entities/transaction.dart';
 import 'package:khatabook_lite/presentation/bloc/transaction/transaction_bloc.dart';
 import 'package:khatabook_lite/presentation/bloc/transaction/transaction_event.dart';
 import 'package:khatabook_lite/presentation/bloc/transaction/transaction_state.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class TransactionEntryScreen extends StatefulWidget {
   final Customer customer;
@@ -32,6 +34,8 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   final _imagePicker = ImagePicker();
   final _audioRecorder = AudioRecorder();
   final _audioPlayer = AudioPlayer();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+
   String _amount = '';
   bool _isSubmitting = false;
   DateTime _selectedDate = DateTime.now();
@@ -39,6 +43,8 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
   String? _voiceNotePath;
   bool _isRecording = false;
   bool _isPlayingPreview = false;
+  bool _isListening = false;
+  String _spokenText = '';
 
   @override
   void dispose() {
@@ -48,6 +54,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     super.dispose();
   }
 
+  // Pick image
   Future<void> _pickImage() async {
     try {
       final image = await _imagePicker.pickImage(
@@ -62,6 +69,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     }
   }
 
+  // Toggle voice recording
   Future<void> _toggleRecording() async {
     try {
       if (_isRecording) {
@@ -85,7 +93,6 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
             path: path,
           );
           setState(() => _isRecording = true);
-          _showSnackBar('recording_started'.tr());
         } else {
           _showSnackBar('microphone_permission_denied'.tr(), isError: true);
         }
@@ -95,6 +102,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     }
   }
 
+  // Play preview voice note
   Future<void> _playPreviewVoiceNote() async {
     if (_voiceNotePath == null) return;
     try {
@@ -113,12 +121,125 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     }
   }
 
+  // Start voice input for amount
+  Future<void> _startVoiceInput() async {
+    try {
+      // Request microphone permission
+      final micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) {
+        _showSnackBar('microphone_permission_denied'.tr(), isError: true);
+        return;
+      }
+
+      // Initialize speech with default settings
+      bool available = await _speech.initialize();
+
+      if (!available) {
+        _showSnackBar('speech_not_available'.tr(), isError: true);
+        return;
+      }
+
+      setState(() {
+        _isListening = true;
+        _spokenText = '';
+      });
+
+      // Listen without specifying locale (use device default)
+      await _speech.listen(
+        onResult: (result) {
+          print('DEBUG: Speech recognized: "${result.recognizedWords}"');
+          print('DEBUG: Final result: ${result.finalResult}');
+
+          setState(() {
+            _spokenText = result.recognizedWords;
+          });
+
+          if (result.finalResult && result.recognizedWords.isNotEmpty) {
+            _extractAmountFromSpeech(result.recognizedWords);
+            _stopVoiceInput();
+          }
+        },
+        listenFor: const Duration(seconds: 10),
+        pauseFor: const Duration(seconds: 3),
+      );
+    } catch (e) {
+      print('DEBUG: Speech error: $e');
+      setState(() => _isListening = false);
+      _showSnackBar('speech_error'.tr(), isError: true);
+    }
+  }
+
+  // Stop voice input
+  Future<void> _stopVoiceInput() async {
+    await _speech.stop();
+    setState(() => _isListening = false);
+  }
+
+  // Extract amount from speech
+  void _extractAmountFromSpeech(String text) {
+    print('DEBUG: Extracting amount from: "$text"');
+
+    // First, try to extract direct numbers
+    final regex = RegExp(r'\d+');
+    final matches = regex.allMatches(text);
+
+    if (matches.isNotEmpty) {
+      final number = matches.first.group(0);
+      if (number != null) {
+        setState(() {
+          _amount = number;
+        });
+        print('DEBUG: Extracted direct number: $number');
+        return;
+      }
+    }
+
+    // Word to number mapping
+    final numberMap = {
+      // English
+      'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+      'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+      'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
+      'fourteen': '14', 'fifteen': '15', 'sixteen': '16',
+      'seventeen': '17', 'eighteen': '18', 'nineteen': '19',
+      'twenty': '20', 'thirty': '30', 'forty': '40',
+      'fifty': '50', 'sixty': '60', 'seventy': '70', 'eighty': '80',
+      'ninety': '90', 'hundred': '100', 'thousand': '1000',
+      // Urdu (Roman)
+      'sifar': '0', 'aik': '1', 'do': '2', 'teen': '3', 'char': '4',
+      'panch': '5', 'chay': '6', 'saat': '7', 'aath': '8', 'nau': '9',
+      'das': '10', 'gyara': '11', 'bara': '12', 'tera': '13',
+      'chauda': '14', 'pandra': '15', 'sola': '16', 'satara': '17',
+      'athara': '18', 'unis': '19', 'bees': '20', 'tees': '30',
+      'chalis': '40', 'pachas': '50', 'saath': '60', 'sattar': '70',
+      'assi': '80', 'nabbay': '90', 'so': '100', 'hazar': '1000',
+    };
+
+    final words = text.toLowerCase().split(RegExp(r'[\s,]+'));
+    final result = StringBuffer();
+
+    for (final word in words) {
+      if (numberMap.containsKey(word)) {
+        result.write(numberMap[word]);
+      }
+    }
+
+    if (result.isNotEmpty) {
+      setState(() {
+        _amount = result.toString();
+      });
+      print('DEBUG: Extracted word number: $_amount');
+    }
+  }
+
+  // Add digit
   void _addDigit(String digit) {
     setState(() {
       if (_amount.length < 7) _amount += digit;
     });
   }
 
+  // Remove digit
   void _removeDigit() {
     setState(() {
       if (_amount.isNotEmpty)
@@ -126,10 +247,12 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
     });
   }
 
+  // Clear amount
   void _clearAmount() {
     setState(() => _amount = '');
   }
 
+  // Submit transaction
   void _submitTransaction() {
     if (_amount.isEmpty || double.parse(_amount) <= 0) {
       _showSnackBar('please_enter_amount'.tr(), isError: true);
@@ -192,6 +315,7 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              // Amount Display with Voice Input
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -209,9 +333,67 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                       _amount.isEmpty ? 'Rs. 0' : 'Rs. $_amount',
                       style: AppTextStyles.displayLarge.copyWith(color: color),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Voice Input Button
+                    GestureDetector(
+                      onTap: _isListening ? _stopVoiceInput : _startVoiceInput,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _isListening ? AppColors.credit : Colors.white,
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _isListening ? Icons.stop : Icons.mic,
+                              color: _isListening ? Colors.white : color,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isListening
+                                  ? 'listening'.tr()
+                                  : 'speak_amount'.tr(),
+                              style: AppTextStyles.caption.copyWith(
+                                color: _isListening ? Colors.white : color,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    if (_isListening) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _spokenText.isEmpty
+                            ? 'listening_hint'.tr()
+                            : _spokenText,
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.white,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
+
+              // Note Field
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: TextField(
@@ -223,6 +405,8 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   ),
                 ),
               ),
+
+              // Date Picker
               ListTile(
                 leading: const Icon(Icons.calendar_today),
                 title: Text('transaction_date'.tr()),
@@ -239,6 +423,8 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   if (date != null) setState(() => _selectedDate = date);
                 },
               ),
+
+              // Voice Note & Photo Options
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -306,6 +492,8 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   ],
                 ),
               ),
+
+              // Voice Note Preview
               if (_voiceNotePath != null && !_isRecording) ...[
                 const SizedBox(height: 8),
                 Card(
@@ -330,6 +518,8 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   ),
                 ),
               ],
+
+              // Photo Preview
               if (_selectedImage != null) ...[
                 const SizedBox(height: 8),
                 Container(
@@ -344,7 +534,10 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   ),
                 ),
               ],
+
               const SizedBox(height: 16),
+
+              // Numeric Keypad
               GridView.count(
                 crossAxisCount: 3,
                 shrinkWrap: true,
@@ -368,6 +561,8 @@ class _TransactionEntryScreenState extends State<TransactionEntryScreen> {
                   _buildKeypadButton('⌫', isDelete: true),
                 ],
               ),
+
+              // Save Button
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton(
