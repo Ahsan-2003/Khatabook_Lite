@@ -134,5 +134,11 @@
   "invalid_backup": "غلط بیک اپ فائل",
   "restore_backup_confirm": "یہ آپ کا موجودہ ڈیٹا تبدیل کر دے گا۔ کیا آپ مطمئن ہیں؟",
   "restore": "بحال کریں",
-  "restore_success": "{customers} گاہک اور {transactions} لین دین بحال ہو گئے"
+  "restore_success": "{customers} گاہک اور {transactions} لین دین بحال ہو گئے",
+  "login": "لاگ ان",
+  "phone_login": "فون نمبر سے لاگ ان کریں",
+  "phone_login_subtitle": "ہم آپ کو تصدیقی کوڈ بھیجیں گے",
+  "send_otp": "او ٹی پی بھیجیں",
+  "verify_otp": "او ٹی پی کی تصدیق کریں",
+  "resend_otp": "او ٹی پی دوبارہ بھیجیں"
 }

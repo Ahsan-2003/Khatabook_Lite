@@ -134,5 +134,11 @@
   "invalid_backup": "Invalid backup file",
   "restore_backup_confirm": "This will replace your current data. Are you sure?",
   "restore": "Restore",
-  "restore_success": "Restored {customers} customers and {transactions} transactions"
+  "restore_success": "Restored {customers} customers and {transactions} transactions",
+  "login": "Login",
+  "phone_login": "Login with Phone Number",
+  "phone_login_subtitle": "We'll send you a verification code",
+  "send_otp": "Send OTP",
+  "verify_otp": "Verify OTP",
+  "resend_otp": "Resend OTP"
 }
