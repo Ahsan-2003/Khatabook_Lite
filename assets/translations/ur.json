@@ -145,5 +145,15 @@
   "listening": "سن رہے ہیں...",
   "listening_hint": "اب رقم بولیں...",
   "speech_not_available": "آواز کی شناخت دستیاب نہیں",
-  "speech_error": "آواز کی شناخت شروع کرنے میں ناکام"
+  "speech_error": "آواز کی شناخت شروع کرنے میں ناکام",
+   "security_info": "سیکیورٹی معلومات",
+  "data_protection": "ڈیٹا تحفظ",
+  "encryption": "AES-256 انکرپشن",
+  "encryption_desc": "آپ کا تمام ڈیٹا AES-256 انکرپشن سے محفوظ ہے",
+  "local_storage": "مقامی اسٹوریج",
+  "local_storage_desc": "ڈیٹا آف لائن رسائی کے لیے آپ کے آلے پر محفوظ ہے",
+  "offline_first": "آف لائن پہلے",
+  "offline_first_desc": "ایپ انٹرنیٹ کے بغیر مکمل کام کرتی ہے",
+  "privacy": "رازداری",
+  "privacy_desc": "آپ کا ڈیٹا کبھی تیسرے فریق کے ساتھ شیئر نہیں کیا جاتا"
 }

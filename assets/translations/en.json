@@ -145,5 +145,15 @@
   "listening": "Listening...",
   "listening_hint": "Speak the amount now...",
   "speech_not_available": "Speech recognition not available",
-  "speech_error": "Failed to start speech recognition"
+  "speech_error": "Failed to start speech recognition",
+  "security_info": "Security Info",
+  "data_protection": "Data Protection",
+  "encryption": "AES-256 Encryption",
+  "encryption_desc": "All your data is encrypted using AES-256 encryption",
+  "local_storage": "Local Storage",
+  "local_storage_desc": "Data is stored locally on your device for offline access",
+  "offline_first": "Offline First",
+  "offline_first_desc": "App works fully offline without internet connection",
+  "privacy": "Privacy",
+  "privacy_desc": "Your data is never shared with third parties"
 }

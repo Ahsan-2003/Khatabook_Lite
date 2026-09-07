@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:khatabook_lite/core/theme/app_colors.dart';
 import 'package:khatabook_lite/core/theme/app_text_styles.dart';
 import 'package:khatabook_lite/presentation/screens/backup_screen.dart';
+import 'package:khatabook_lite/presentation/screens/security_info_screen.dart';
 import 'package:khatabook_lite/presentation/screens/security_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -73,6 +74,28 @@ class SettingsScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const BackupScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.shield, color: AppColors.primary),
+                  title: Text(
+                    'security_info'.tr(),
+                    style: AppTextStyles.heading,
+                  ),
+                  subtitle: Text(
+                    'data_protection'.tr(),
+                    style: AppTextStyles.caption,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SecurityInfoScreen(),
                       ),
                     );
                   },
